@@ -69,4 +69,4 @@ Handled: missing customer IDs, duplicates, fee/postage codes, same-day reversals
 ## Disclosure
 - Data: supplied `Online_Retail.xlsx` (matches the public UCI Online Retail dataset). No external APIs.
 - Libraries: pandas, NumPy, SciPy, scikit-learn.
-- AI-assisted: the dashboard were drafted with Claude (Anthropic). All figures come from `pipeline.py` output and can be regenerated.
+- AI-assisted: the code, analysis and dashboard were drafted with Claude (Anthropic). All figures come from `pipeline.py` output and can be regenerated.
