@@ -1,0 +1,2578 @@
+<title>Online Retail Investigation</title>
+<style>
+/* Layout: sticky tab bar over a single 1040px column; summary first, evidence below, small-multiple charts in a 2-col grid.
+   Palette: reference dataviz palette (blue / orange / aqua categorical, blue sequential, status colors reserved for verdicts). */
+:root{
+  --bg:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --line:rgba(11,11,11,.10); --hover:rgba(11,11,11,.05); --band:rgba(42,120,214,.08);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --good:#0ca30c; --good-ink:#006300; --crit:#d03b3b; --warn:#fab219;
+  --h0:#cde2fb; --h1:#9ec5f4; --h2:#6da7ec; --h3:#3987e5; --h4:#256abf; --h5:#184f95; --h6:#0d366b;
+  --i0:#0b0b0b; --i1:#0b0b0b; --i2:#0b0b0b; --i3:#ffffff; --i4:#ffffff; --i5:#ffffff; --i6:#ffffff;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --line:rgba(255,255,255,.10); --hover:rgba(255,255,255,.06); --band:rgba(57,135,229,.13);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --good-ink:#0ca30c;
+  --h0:#0d366b; --h1:#104281; --h2:#184f95; --h3:#256abf; --h4:#6da7ec; --h5:#9ec5f4; --h6:#cde2fb;
+  --i0:#ffffff; --i1:#ffffff; --i2:#ffffff; --i3:#ffffff; --i4:#0b0b0b; --i5:#0b0b0b; --i6:#0b0b0b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --line:rgba(255,255,255,.10); --hover:rgba(255,255,255,.06); --band:rgba(57,135,229,.13);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --good-ink:#0ca30c;
+  --h0:#0d366b; --h1:#104281; --h2:#184f95; --h3:#256abf; --h4:#6da7ec; --h5:#9ec5f4; --h6:#cde2fb;
+  --i0:#ffffff; --i1:#ffffff; --i2:#ffffff; --i3:#ffffff; --i4:#0b0b0b; --i5:#0b0b0b; --i6:#0b0b0b; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);padding-inline:16px;padding-block:0 56px}
+.wrap{max-width:1040px;margin-inline:auto}
+h1,h2,h3{text-wrap:balance;line-height:1.2;margin:0}
+h1{font-size:1.9rem;letter-spacing:-.01em;font-weight:650}
+h2{font-size:1.2rem;font-weight:650}
+h3{font-size:1rem;font-weight:650}
+p{margin:0}
+.sub{color:var(--ink2);max-width:68ch}
+.eyebrow{font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2);font-weight:600}
+header.top{padding-block:28px 18px;display:flex;flex-direction:column;gap:8px}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);margin-inline:-16px;padding-inline:16px}
+nav .row{max-width:1040px;margin-inline:auto;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+nav button{background:none;border:0;border-bottom:2px solid transparent;color:var(--ink2);font:inherit;font-weight:600;padding:12px 12px 10px;cursor:pointer;white-space:nowrap}
+nav button:hover{color:var(--ink)}
+nav button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--s1)}
+:focus-visible{outline:2px solid var(--s1);outline-offset:2px;border-radius:4px}
+section.tab{display:flex;flex-direction:column;gap:26px;padding-top:26px}
+section.tab[hidden]{display:none}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px;min-width:0}
+.card.plain{padding:0;border:0;background:none}
+.stack{display:flex;flex-direction:column;gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media(max-width:760px){.grid2,.grid3{grid-template-columns:minmax(0,1fr)}}
+.hero{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:24px;align-items:start}
+@media(max-width:760px){.hero{grid-template-columns:minmax(0,1fr)}}
+.hero h2{font-size:1.5rem;letter-spacing:-.01em}
+.facts{display:flex;flex-direction:column;gap:0;border-left:1px solid var(--line);padding-left:20px}
+@media(max-width:760px){.facts{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:16px}}
+.fact{padding-block:10px;border-bottom:1px solid var(--line)}
+.fact:last-child{border-bottom:0}
+.fact b{font-size:1.7rem;font-weight:650;display:block;letter-spacing:-.01em}
+.fact span{color:var(--ink2);font-size:.88rem}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.84rem;color:var(--ink2)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.legend i.ln{height:3px;border-radius:2px;width:16px;vertical-align:3px}
+svg.chart{width:100%;height:auto;display:block;overflow:visible}
+svg text{font-family:var(--sans);fill:var(--muted);font-size:11px}
+svg text.t2{fill:var(--ink2)}
+.ctitle{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.btn{background:none;border:1px solid var(--line);color:var(--ink2);font:inherit;font-size:.8rem;padding:4px 10px;border-radius:6px;cursor:pointer}
+.btn:hover{background:var(--hover);color:var(--ink)}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th{color:var(--ink2);font-weight:600;text-align:left;font-size:.78rem;padding:6px 10px 6px 0;border-bottom:1px solid var(--axis);white-space:nowrap}
+td{padding:8px 10px 8px 0;border-bottom:1px solid var(--line);vertical-align:middle}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto}
+.mono{font-family:var(--mono);font-size:.82rem}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:650;padding:3px 9px 3px 7px;border:1px solid var(--line);border-radius:999px;color:var(--ink)}
+.pill svg{width:12px;height:12px}
+.bar{height:10px;border-radius:2px;background:var(--s1);min-width:2px}
+.bar.o{background:var(--s2)}
+.bars{display:flex;flex-direction:column;gap:3px;min-width:120px}
+.bar-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.bar-row span{font-size:.78rem;color:var(--ink2);font-variant-numeric:tabular-nums}
+.tag{font-size:.68rem;border:1px solid var(--axis);border-radius:4px;padding:0 5px;color:var(--ink2);margin-left:6px;white-space:nowrap}
+.note{font-size:.85rem;color:var(--ink2);max-width:75ch}
+.callout{border-left:3px solid var(--s2);padding:4px 0 4px 14px;max-width:75ch}
+ul.clean{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:6px}
+.heat td{padding:0;border:0}
+.heat th{padding:4px 6px;text-align:center}
+.heat td.c{height:30px;min-width:46px;text-align:center;font-size:.74rem;font-variant-numeric:tabular-nums;border:2px solid var(--surface)}
+.heat td.rl{padding-right:10px;white-space:nowrap;font-size:.8rem}
+.finding{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px}
+.finding .k{font-weight:650;white-space:nowrap}
+@media(max-width:760px){.finding{grid-template-columns:minmax(0,1fr)}}
+#tip{position:fixed;z-index:20;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--axis);border-radius:8px;padding:8px 10px;font-size:.8rem;box-shadow:0 4px 18px rgba(0,0,0,.16);max-width:260px;display:none}
+#tip b{display:block;margin-bottom:3px}
+#tip div{display:flex;justify-content:space-between;gap:14px;font-variant-numeric:tabular-nums}
+#tip i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px}
+.tl{position:relative;height:150px;margin-top:6px}
+.tl .m{position:absolute;top:0;bottom:22px;border-left:1px solid var(--grid);font-size:.68rem;color:var(--muted);padding-left:3px}
+.tl .w{position:absolute;height:16px;border-radius:3px;font-size:.66rem;line-height:16px;padding-inline:5px;white-space:nowrap;overflow:hidden;color:var(--ink)}
+.tl .tr{background:var(--band);border:1px solid var(--s1)}
+.tl .lb{background:rgba(235,104,52,.18);border:1px solid var(--s2)}
+.flow{display:flex;align-items:center;gap:10px;overflow-x:auto;padding-bottom:4px}
+.fc{display:flex;flex-direction:column;gap:8px;flex:0 0 auto;width:190px}
+.fb{border:1px solid var(--line);border-radius:8px;padding:9px 11px;display:flex;flex-direction:column;gap:2px;background:var(--bg)}
+.fb span{font-size:.78rem;color:var(--ink2)}
+.fa{color:var(--muted);font-size:1.2rem;flex:0 0 auto}
+@media (prefers-reduced-motion:no-preference){.bar{transition:width .3s}}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Algothon'26 · ALG-DATA-01 · The Mystery Dataset</span>
+  <h1>Online Retail Investigation</h1>
+  <p class="sub" id="lede"></p>
+</header>
+</div>
+<nav><div class="row" role="tablist" id="tabs"></div></nav>
+<div class="wrap" id="app"></div>
+<div id="tip" role="status"></div>
+
+<script>
+const R = {
+ "non_product_codes": [
+  {
+   "code": "DOT",
+   "value": 206245.48,
+   "rows": 710
+  },
+  {
+   "code": "POST",
+   "value": 66230.64,
+   "rows": 1256
+  },
+  {
+   "code": "C2",
+   "value": 6986.0,
+   "rows": 144
+  },
+  {
+   "code": "gift_0001_30",
+   "value": 175.53,
+   "rows": 8
+  },
+  {
+   "code": "gift_0001_50",
+   "value": 167.56,
+   "rows": 4
+  },
+  {
+   "code": "gift_0001_20",
+   "value": 167.05,
+   "rows": 10
+  }
+ ],
+ "reversed_top": [
+  {
+   "invoice": "581483",
+   "customer": 16446,
+   "date": "2011-12-09",
+   "value": 168469.6,
+   "item": "PAPER CRAFT , LITTLE BIRDIE"
+  },
+  {
+   "invoice": "541431",
+   "customer": 12346,
+   "date": "2011-01-18",
+   "value": 77183.6,
+   "item": "MEDIUM CERAMIC TOP STORAGE JAR"
+  },
+  {
+   "invoice": "556444",
+   "customer": 15098,
+   "date": "2011-06-10",
+   "value": 38970.0,
+   "item": "PICNIC BASKET WICKER 60 PIECES"
+  },
+  {
+   "invoice": "540815",
+   "customer": 15749,
+   "date": "2011-01-11",
+   "value": 15160.900000000001,
+   "item": "GIN + TONIC DIET METAL SIGN"
+  },
+  {
+   "invoice": "570097",
+   "customer": 16029,
+   "date": "2011-10-07",
+   "value": 7630.5599999999995,
+   "item": "FELTCRAFT DOLL MOLLY"
+  },
+  {
+   "invoice": "540818",
+   "customer": 15749,
+   "date": "2011-01-11",
+   "value": 4522.5,
+   "item": "DOORMAT FAIRY CAKE"
+  }
+ ],
+ "naive": {
+  "top1pct_share": 0.3198819723094681,
+  "rank": {
+   "16446": 4,
+   "12346": 9
+  },
+  "value": {
+   "16446": 168472.5,
+   "12346": 77183.6
+  }
+ },
+ "reversed_value": 425796.20999999996,
+ "reversed_lines": 2818,
+ "unmatched_returns_value": -88313.09999999999,
+ "guest_share_rows": 0.2527564721774302,
+ "guest_share_rev": 0.15371035938321329,
+ "cleaning_log": [
+  {
+   "step": "Raw rows",
+   "rows": 541909,
+   "removed": 0,
+   "value": 9747747.934
+  },
+  {
+   "step": "Exact duplicate rows",
+   "rows": 536641,
+   "removed": 5268,
+   "value": 21740.98
+  },
+  {
+   "step": "Non-product codes (postage, fees, manual, vouchers)",
+   "rows": 533652,
+   "removed": 2989,
+   "value": -44912.755999999994
+  },
+  {
+   "step": "Stock adjustments (negative qty, not a cancellation)",
+   "rows": 532328,
+   "removed": 1324,
+   "value": 0.0
+  },
+  {
+   "step": "Zero-price rows (free/promo/write-offs)",
+   "rows": 531172,
+   "removed": 1156,
+   "value": 0.0
+  },
+  {
+   "step": "Cancellation rows set aside (paired to orders or kept as returns below)",
+   "rows": 522504,
+   "removed": 8668,
+   "value": -475901.16000000003
+  },
+  {
+   "step": "Orders that were placed then fully cancelled (matched pairs)",
+   "rows": 519686,
+   "removed": 2818,
+   "value": 425796.20999999996
+  },
+  {
+   "step": "Guest orders (no CustomerID): kept for totals, excluded from customer analysis",
+   "rows": 131354,
+   "removed": 0,
+   "value": 1509593.23
+  }
+ ],
+ "clean_rows": 519686,
+ "clean_revenue": 9821024.66,
+ "date_range": [
+  "2010-12-01",
+  "2011-12-09"
+ ],
+ "n_customers": 4324,
+ "n_invoices": 18276,
+ "n_products": 3645,
+ "months": [
+  "2010-12",
+  "2011-01",
+  "2011-02",
+  "2011-03",
+  "2011-04",
+  "2011-05",
+  "2011-06",
+  "2011-07",
+  "2011-08",
+  "2011-09",
+  "2011-10",
+  "2011-11",
+  "2011-12"
+ ],
+ "state_customers": {
+  "new": [
+   883,
+   414,
+   381,
+   451,
+   300,
+   283,
+   242,
+   187,
+   169,
+   296,
+   356,
+   322,
+   40
+  ],
+  "continuing": [
+   0,
+   323,
+   375,
+   434,
+   418,
+   586,
+   540,
+   554,
+   560,
+   595,
+   653,
+   946,
+   458
+  ],
+  "reactivated": [
+   0,
+   0,
+   0,
+   85,
+   130,
+   182,
+   204,
+   204,
+   204,
+   363,
+   347,
+   389,
+   112
+  ]
+ },
+ "state_revenue": {
+  "new": [
+   556481.0800000001,
+   188275.17,
+   156389.3,
+   194681.44,
+   118957.42000000001,
+   117802.54000000001,
+   93008.79000000001,
+   71524.05000000002,
+   78181.56,
+   149838.27,
+   155908.31,
+   132784.08,
+   26388.5
+  ],
+  "continuing": [
+   0.0,
+   268760.43,
+   282819.32999999996,
+   349804.33,
+   255631.69,
+   463561.89,
+   423098.23,
+   412458.56999999995,
+   426286.4,
+   604013.65,
+   618261.99,
+   806825.52,
+   281738.5
+  ],
+  "reactivated": [
+   0.0,
+   0.0,
+   0.0,
+   31119.23,
+   73992.97,
+   70562.6,
+   89621.35,
+   101924.14000000001,
+   122001.71000000002,
+   174221.47000000003,
+   195802.56,
+   183960.6,
+   34743.759999999995
+  ]
+ },
+ "monthly": {
+  "rev": [
+   556481.08,
+   457035.6,
+   439208.63,
+   575605.0,
+   448582.08,
+   651927.03,
+   605728.37,
+   585906.76,
+   626469.67,
+   928073.39,
+   969972.86,
+   1123570.2,
+   342870.76
+  ],
+  "customers": [
+   883.0,
+   737.0,
+   756.0,
+   970.0,
+   848.0,
+   1051.0,
+   986.0,
+   945.0,
+   933.0,
+   1254.0,
+   1356.0,
+   1657.0,
+   610.0
+  ],
+  "invoices": [
+   1386.0,
+   975.0,
+   987.0,
+   1303.0,
+   1129.0,
+   1528.0,
+   1376.0,
+   1314.0,
+   1264.0,
+   1728.0,
+   1884.0,
+   2631.0,
+   771.0
+  ],
+  "aov": [
+   401.5015007215007,
+   468.7544615384615,
+   444.99354609929077,
+   441.75364543361474,
+   397.32690876882197,
+   426.65381544502617,
+   440.20957122093023,
+   445.8955555555556,
+   495.6247389240507,
+   537.0795081018518,
+   514.8475902335456,
+   427.0506271379703,
+   444.7091569390402
+  ],
+  "rev_per_cust": [
+   630.2163986409965,
+   620.1297150610583,
+   580.9637962962963,
+   593.4072164948453,
+   528.9883018867924,
+   620.2921313035205,
+   614.3289756592292,
+   620.0071534391534,
+   671.4573097534834,
+   740.0904226475279,
+   715.3192182890855,
+   678.0749547374774,
+   562.0832131147541
+  ]
+ },
+ "monthly_total_rev": [
+  766853.75,
+  564714.68,
+  504698.46,
+  682169.64,
+  509495.98,
+  732598.89,
+  690022.43,
+  682447.76,
+  715152.05,
+  1017634.56,
+  1070957.26,
+  1439148.89,
+  445130.31
+ ],
+ "top_share": {
+  "1": 0.3001965703517811,
+  "5": 0.4864806963822837,
+  "10": 0.5999370495919498,
+  "20": 0.7365351133023784
+ },
+ "gini": 0.7051493090589029,
+ "lorenz": [
+  [
+   0.0,
+   0.0
+  ],
+  [
+   0.00023126734505087883,
+   3.4891703365710133e-07
+  ],
+  [
+   0.02520814061054579,
+   0.0007040652442704442
+  ],
+  [
+   0.050185013876040706,
+   0.0019744023804092177
+  ],
+  [
+   0.07516188714153561,
+   0.003531184760072069
+  ],
+  [
+   0.10013876040703053,
+   0.005386006054073891
+  ],
+  [
+   0.12511563367252543,
+   0.00748218047922944
+  ],
+  [
+   0.15009250693802034,
+   0.009858630332224257
+  ],
+  [
+   0.17506938020351526,
+   0.012543660003461049
+  ],
+  [
+   0.20004625346901017,
+   0.015537092628098607
+  ],
+  [
+   0.22502312673450509,
+   0.018895254243828864
+  ],
+  [
+   0.25,
+   0.022653493755647805
+  ],
+  [
+   0.2749768732654949,
+   0.026688083980258483
+  ],
+  [
+   0.29995374653098983,
+   0.030986687692615627
+  ],
+  [
+   0.32493061979648474,
+   0.03560702659854582
+  ],
+  [
+   0.3501387604070305,
+   0.040650793169089504
+  ],
+  [
+   0.37511563367252543,
+   0.04603388997700005
+  ],
+  [
+   0.40009250693802034,
+   0.05195175989077496
+  ],
+  [
+   0.42506938020351526,
+   0.05843101324846041
+  ],
+  [
+   0.45004625346901017,
+   0.06549112804266975
+  ],
+  [
+   0.4750231267345051,
+   0.07318706592517722
+  ],
+  [
+   0.5,
+   0.08142345463590028
+  ],
+  [
+   0.5249768732654949,
+   0.09024215218725577
+  ],
+  [
+   0.5499537465309898,
+   0.09977298699798104
+  ],
+  [
+   0.5749306197964847,
+   0.11016790882674718
+  ],
+  [
+   0.5999074930619797,
+   0.1215543169078399
+  ],
+  [
+   0.6248843663274746,
+   0.1339400125448669
+  ],
+  [
+   0.6498612395929695,
+   0.1474200816453106
+  ],
+  [
+   0.6750693802035153,
+   0.16228593610619493
+  ],
+  [
+   0.7000462534690102,
+   0.17866231015756587
+  ],
+  [
+   0.7250231267345051,
+   0.1966836234850584
+  ],
+  [
+   0.75,
+   0.21657943341776462
+  ],
+  [
+   0.7749768732654949,
+   0.23866879330074692
+  ],
+  [
+   0.7999537465309898,
+   0.26322373690087714
+  ],
+  [
+   0.8249306197964847,
+   0.2907946736197763
+  ],
+  [
+   0.8499074930619797,
+   0.3221690370126774
+  ],
+  [
+   0.8748843663274746,
+   0.35792680659822257
+  ],
+  [
+   0.8998612395929695,
+   0.39964333556440107
+  ],
+  [
+   0.9248381128584644,
+   0.44931356547328194
+  ],
+  [
+   0.9498149861239593,
+   0.5128352974933942
+  ],
+  [
+   0.9747918593894542,
+   0.6032819920647525
+  ],
+  [
+   1.0,
+   1.0000000000000002
+  ]
+ ],
+ "one_time_share": 0.34736355226641996,
+ "uk_share": 0.8227673003854644,
+ "cohort": {
+  "cohorts": [
+   "2010-12",
+   "2011-01",
+   "2011-02",
+   "2011-03",
+   "2011-04",
+   "2011-05",
+   "2011-06",
+   "2011-07",
+   "2011-08",
+   "2011-09",
+   "2011-10",
+   "2011-11",
+   "2011-12"
+  ],
+  "size": [
+   883,
+   414,
+   381,
+   451,
+   300,
+   283,
+   242,
+   187,
+   169,
+   296,
+   356,
+   322,
+   40
+  ],
+  "ret": [
+   [
+    1.0,
+    0.36579841449603623,
+    0.32389580973952437,
+    0.38165345413363533,
+    0.35900339750849375,
+    0.3986409966024915,
+    0.36013590033975085,
+    0.347678369195923,
+    0.35334088335220837,
+    0.3929784824462061,
+    0.3737259343148358,
+    0.5016987542468856,
+    0.2627406568516421
+   ],
+   [
+    1.0,
+    0.21497584541062803,
+    0.26811594202898553,
+    0.22946859903381642,
+    0.3188405797101449,
+    0.28743961352657005,
+    0.24879227053140096,
+    0.24154589371980675,
+    0.2971014492753623,
+    0.3285024154589372,
+    0.3671497584541063,
+    0.11835748792270531,
+    null
+   ],
+   [
+    1.0,
+    0.18635170603674542,
+    0.18635170603674542,
+    0.28346456692913385,
+    0.27034120734908135,
+    0.2440944881889764,
+    0.2545931758530184,
+    0.27296587926509186,
+    0.2440944881889764,
+    0.30183727034120733,
+    0.06824146981627296,
+    null,
+    null
+   ],
+   [
+    1.0,
+    0.14412416851441243,
+    0.24833702882483372,
+    0.1951219512195122,
+    0.22394678492239467,
+    0.16851441241685144,
+    0.2660753880266075,
+    0.23059866962305986,
+    0.2793791574279379,
+    0.08869179600886919,
+    null,
+    null,
+    null
+   ],
+   [
+    1.0,
+    0.21333333333333335,
+    0.20333333333333334,
+    0.21,
+    0.19666666666666666,
+    0.23,
+    0.21333333333333335,
+    0.26,
+    0.07333333333333333,
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    1.0,
+    0.19434628975265017,
+    0.17314487632508835,
+    0.17314487632508835,
+    0.20848056537102475,
+    0.22968197879858657,
+    0.26501766784452296,
+    0.09187279151943463,
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    1.0,
+    0.17355371900826447,
+    0.15702479338842976,
+    0.2644628099173554,
+    0.23140495867768596,
+    0.3305785123966942,
+    0.09504132231404959,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    1.0,
+    0.17647058823529413,
+    0.20320855614973263,
+    0.22459893048128343,
+    0.2727272727272727,
+    0.11229946524064172,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    1.0,
+    0.20118343195266272,
+    0.23668639053254437,
+    0.24260355029585798,
+    0.1242603550295858,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    1.0,
+    0.23648648648648649,
+    0.30405405405405406,
+    0.11486486486486487,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    1.0,
+    0.23595505617977527,
+    0.1151685393258427,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    1.0,
+    0.10869565217391304,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ],
+   [
+    1.0,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  ]
+ },
+ "rfm": [
+  {
+   "segment": "Champions",
+   "customers": 1113.0,
+   "revenue": 5693151.32,
+   "med_recency": 10.0,
+   "med_freq": 7.0,
+   "rev_share": 0.6849784381846244,
+   "cust_share": 0.2574005550416281
+  },
+  {
+   "segment": "Loyal",
+   "customers": 826.0,
+   "revenue": 1145610.48,
+   "med_recency": 38.0,
+   "med_freq": 3.0,
+   "rev_share": 0.13783552083037517,
+   "cust_share": 0.1910268270120259
+  },
+  {
+   "segment": "Hibernating",
+   "customers": 1442.0,
+   "revenue": 737973.99,
+   "med_recency": 197.0,
+   "med_freq": 1.0,
+   "rev_share": 0.08879023982996391,
+   "cust_share": 0.33348751156336726
+  },
+  {
+   "segment": "At risk (was loyal)",
+   "customers": 288.0,
+   "revenue": 445033.57,
+   "med_recency": 113.5,
+   "med_freq": 4.0,
+   "rev_share": 0.05354475624904481,
+   "cust_share": 0.0666049953746531
+  },
+  {
+   "segment": "Needs attention",
+   "customers": 347.0,
+   "revenue": 157806.81,
+   "med_recency": 52.0,
+   "med_freq": 1.0,
+   "rev_share": 0.018986718633134413,
+   "cust_share": 0.08024976873265495
+  },
+  {
+   "segment": "New / recent",
+   "customers": 308.0,
+   "revenue": 131855.26,
+   "med_recency": 18.0,
+   "med_freq": 1.0,
+   "rev_share": 0.01586432627285719,
+   "cust_share": 0.07123034227567067
+  }
+ ],
+ "n_high_value_invoices": 109,
+ "high_value_invoice_share": 0.12522183919407007,
+ "largest_invoices": [
+  {
+   "invoice": "567423",
+   "customer": 17450,
+   "date": "2011-09-20",
+   "value": 27872.8,
+   "lines": 11,
+   "item": "RECIPE BOX PANTRY YELLOW DESIGN",
+   "z": 5.645896039587553
+  },
+  {
+   "invoice": "556917",
+   "customer": 12415,
+   "date": "2011-06-15",
+   "value": 22775.93,
+   "lines": 138,
+   "item": "VINTAGE PAISLEY STATIONERY SET",
+   "z": 5.3941733653381005
+  },
+  {
+   "invoice": "572209",
+   "customer": 18102,
+   "date": "2011-10-21",
+   "value": 22206.0,
+   "lines": 7,
+   "item": "LANDMARK FRAME COVENT GARDEN",
+   "z": 5.362585407918411
+  },
+  {
+   "invoice": "567381",
+   "customer": 17450,
+   "date": "2011-09-20",
+   "value": 22104.8,
+   "lines": 12,
+   "item": "POTTERING MUG",
+   "z": 5.356891813243159
+  },
+  {
+   "invoice": "563614",
+   "customer": 12415,
+   "date": "2011-08-18",
+   "value": 21706.44,
+   "lines": 96,
+   "item": "WOODEN ADVENT CALENDAR CREAM",
+   "z": 5.334223614196617
+  },
+  {
+   "invoice": "550461",
+   "customer": 15749,
+   "date": "2011-04-18",
+   "value": 21535.9,
+   "lines": 5,
+   "item": "WHITE HANGING HEART T-LIGHT HOLDER",
+   "z": 5.324391787988467
+  }
+ ],
+ "price_outlier_lines": 6,
+ "price_outlier_value": 983.8000000000001,
+ "price_outliers": [
+  {
+   "item": "PICNIC BASKET WICKER 60 PIECES",
+   "price": 649.5,
+   "median": 5.95,
+   "qty": 1
+  },
+  {
+   "item": "MARIE ANTOINETTE TRINKET BOX SILVER",
+   "price": 1.0,
+   "median": 12.5,
+   "qty": 168
+  },
+  {
+   "item": "MARIE ANTOINETTE TRINKET BOX GOLD",
+   "price": 1.0,
+   "median": 12.5,
+   "qty": 144
+  },
+  {
+   "item": "CHINESE DRAGON PAPER LANTERNS",
+   "price": 8.29,
+   "median": 0.42,
+   "qty": 2
+  },
+  {
+   "item": "CHARLIE+LOLA\"EXTREMELY BUSY\" SIGN",
+   "price": 4.96,
+   "median": 0.39,
+   "qty": 1
+  }
+ ],
+ "countries": [
+  {
+   "country": "United Kingdom",
+   "revenue": 6838374.0,
+   "customers": 3909.0,
+   "invoices": 16469.0,
+   "aov": 415.2270326067156,
+   "rev_per_cust": 1749.3921719109746
+  },
+  {
+   "country": "Netherlands",
+   "revenue": 283443.54,
+   "customers": 9.0,
+   "invoices": 93.0,
+   "aov": 3047.7799999999997,
+   "rev_per_cust": 31493.726666666666
+  },
+  {
+   "country": "EIRE",
+   "revenue": 247812.07,
+   "customers": 3.0,
+   "invoices": 253.0,
+   "aov": 979.4943478260869,
+   "rev_per_cust": 82604.02333333333
+  },
+  {
+   "country": "Germany",
+   "revenue": 203849.48,
+   "customers": 94.0,
+   "invoices": 443.0,
+   "aov": 460.15683972911967,
+   "rev_per_cust": 2168.6114893617023
+  },
+  {
+   "country": "France",
+   "revenue": 182143.53,
+   "customers": 87.0,
+   "invoices": 377.0,
+   "aov": 483.1393368700265,
+   "rev_per_cust": 2093.6037931034484
+  },
+  {
+   "country": "Australia",
+   "revenue": 137124.05,
+   "customers": 9.0,
+   "invoices": 53.0,
+   "aov": 2587.246226415094,
+   "rev_per_cust": 15236.005555555554
+  },
+  {
+   "country": "Switzerland",
+   "revenue": 52088.85,
+   "customers": 21.0,
+   "invoices": 45.0,
+   "aov": 1157.53,
+   "rev_per_cust": 2480.4214285714284
+  },
+  {
+   "country": "Spain",
+   "revenue": 52029.97,
+   "customers": 29.0,
+   "invoices": 87.0,
+   "aov": 598.0456321839081,
+   "rev_per_cust": 1794.1368965517242
+  }
+ ],
+ "returns_total": -84162.65000000001,
+ "returns_customers": 1272,
+ "returns_top1pct_share": 0.282523898665263,
+ "returns_top10_share": 0.25803928464704945,
+ "returns_median_ratio": 0.012044909047748834,
+ "returns_top": [
+  {
+   "customer": 12931,
+   "value": -7122.63
+  },
+  {
+   "customer": 15749,
+   "value": -3314.9999999999995
+  },
+  {
+   "customer": 16013,
+   "value": -2186.15
+  },
+  {
+   "customer": 13113,
+   "value": -1657.53
+  },
+  {
+   "customer": 12755,
+   "value": -1591.1999999999998
+  }
+ ],
+ "hypotheses": [
+  {
+   "id": "H1",
+   "verdict": "Supported",
+   "claim": "The Sep-Nov surge comes from more orders, not bigger orders.",
+   "evidence": {
+    "rev_growth": 0.661959448102222,
+    "order_count_growth": 0.5789074355083459,
+    "share_of_growth_from_order_count": 0.8990857123011298,
+    "median_order_summer": 299.40999999999997,
+    "median_order_q4": 306.73,
+    "mean_order_summer": 459.81406170966113,
+    "mean_order_q4": 484.0007127983342,
+    "mannwhitney_p": 2.5157158051132813e-06,
+    "median_diff_ci": [
+     2.914874999999964,
+     17.46700000000002
+    ],
+    "n_orders": [
+     3954,
+     6243
+    ]
+   }
+  },
+  {
+   "id": "H2",
+   "verdict": "Not supported",
+   "claim": "The Sep-Nov surge is a Christmas-decoration effect.",
+   "evidence": {
+    "uplift_per_month": 401170.5500000001,
+    "share_from_christmas_keywords": 0.23107586037908306,
+    "christmas_share_of_revenue_summer": 0.025641151159163107,
+    "christmas_share_of_revenue_q4": 0.10746591944189343,
+    "products_growing": 2097,
+    "products_shrinking": 1084,
+    "top50_share_of_growth": 0.28608712076218645,
+    "top200_share_of_growth": 0.5764108890646775,
+    "top_movers": [
+     {
+      "item": "RABBIT NIGHT LIGHT",
+      "uplift": 9510.966666666667
+     },
+     {
+      "item": "PAPER CHAIN KIT 50'S CHRISTMAS",
+      "uplift": 9047.736666666666
+     },
+     {
+      "item": "HOT WATER BOTTLE KEEP CALM",
+      "uplift": 6946.35
+     },
+     {
+      "item": "PAPER CHAIN KIT VINTAGE CHRISTMAS",
+      "uplift": 5176.866666666667
+     },
+     {
+      "item": "LOVE HOT WATER BOTTLE",
+      "uplift": 3887.933333333334
+     },
+     {
+      "item": "HOT WATER BOTTLE TEA AND SYMPATHY",
+      "uplift": 3837.3100000000004
+     },
+     {
+      "item": "HAND WARMER OWL DESIGN",
+      "uplift": 3777.413333333334
+     },
+     {
+      "item": "JUMBO BAG 50'S CHRISTMAS",
+      "uplift": 3750.7866666666664
+     }
+    ],
+    "keyword_note": "Keyword match is a lower bound on seasonal items; see README limitations."
+   }
+  },
+  {
+   "id": "H3",
+   "verdict": "Supported",
+   "claim": "Customers who bought all year spend more in Q4, and customers who skipped summer add a large second source of growth.",
+   "evidence": {
+    "summer_customers": 1942,
+    "q4_customers": 2837,
+    "returning_in_q4": 1321,
+    "returning_share": 0.680226570545829,
+    "same_customer_growth": 0.3729449759653971,
+    "q4_rev_share_from_customers_absent_in_summer": 0.291408189811781
+   }
+  }
+ ],
+ "lr_vs_gbm_gap_ci": [
+  -0.0007744583085274561,
+  0.01715487279940812
+ ],
+ "model": {
+  "horizon_days": 100,
+  "train_cutoffs": [
+   "2011-02-15",
+   "2011-03-15",
+   "2011-04-15",
+   "2011-05-15"
+  ],
+  "test_cutoff": "2011-09-01",
+  "train_rows": 8232,
+  "test_rows": 3310,
+  "train_churn_rate": 0.4386540330417881,
+  "test_churn_rate": 0.41299093655589125,
+  "results": {
+   "Baseline: recency only": {
+    "roc_auc": 0.6851029769046956,
+    "pr_auc": 0.5764848493322746,
+    "top_decile_precision": 0.6435045317220544,
+    "top_decile_lift": 1.5581565471836136,
+    "auc_ci": [
+     0.6672726589892278,
+     0.7022728438498956
+    ]
+   },
+   "Logistic regression": {
+    "roc_auc": 0.742895642113324,
+    "pr_auc": 0.6254676286206029,
+    "top_decile_precision": 0.6586102719033232,
+    "top_decile_lift": 1.594732991953182,
+    "auc_ci": [
+     0.7264393320891034,
+     0.7579276151383025
+    ],
+    "gain_vs_baseline": 0.05817898002323799,
+    "gain_ci": [
+     0.043960856463164784,
+     0.07099930423074718
+    ]
+   },
+   "Gradient boosting": {
+    "roc_auc": 0.7349314648160202,
+    "pr_auc": 0.6070748184966049,
+    "top_decile_precision": 0.6706948640483383,
+    "top_decile_lift": 1.6239941477688367,
+    "auc_ci": [
+     0.7181853650447211,
+     0.7506930635894288
+    ],
+    "gain_vs_baseline": 0.0501636659407763,
+    "gain_ci": [
+     0.0386715270575408,
+     0.06169943274404321
+    ]
+   }
+  },
+  "roc": {
+   "Baseline: recency only": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.00977869274318065,
+     0.029261155815654718
+    ],
+    [
+     0.02161605764282038,
+     0.046086320409656184
+    ],
+    [
+     0.029850746268656716,
+     0.06510607168983175
+    ],
+    [
+     0.03654143077714874,
+     0.08119970738844184
+    ],
+    [
+     0.03808543489449305,
+     0.08632040965618142
+    ],
+    [
+     0.040658775090066906,
+     0.09217264081931237
+    ],
+    [
+     0.0442614513638703,
+     0.10607168983174835
+    ],
+    [
+     0.04683479155944416,
+     0.11485003657644477
+    ],
+    [
+     0.050437467833247554,
+     0.1258229700073153
+    ],
+    [
+     0.054554812146165726,
+     0.14191660570592537
+    ],
+    [
+     0.05815748841996912,
+     0.14996342355523043
+    ],
+    [
+     0.06278950077200206,
+     0.1711777615215801
+    ],
+    [
+     0.06433350488934637,
+     0.18215069495245062
+    ],
+    [
+     0.06690684508492023,
+     0.1960497439648866
+    ],
+    [
+     0.0725681935151827,
+     0.20482809070958302
+    ],
+    [
+     0.07668553782810088,
+     0.21360643745427946
+    ],
+    [
+     0.08492022645393721,
+     0.22970007315288954
+    ],
+    [
+     0.09264024704065878,
+     0.2377468910021946
+    ],
+    [
+     0.09984559958826557,
+     0.2582297000731529
+    ],
+    [
+     0.10550694801852804,
+     0.2728602779809802
+    ],
+    [
+     0.11013896037056099,
+     0.2831016825164594
+    ],
+    [
+     0.11631497683993824,
+     0.2991953182150695
+    ],
+    [
+     0.12866700977869275,
+     0.33138258961228967
+    ],
+    [
+     0.13535769428718478,
+     0.34162399414776884
+    ],
+    [
+     0.14668039114770973,
+     0.35918068763716166
+    ],
+    [
+     0.1523417395779722,
+     0.3694220921726408
+    ],
+    [
+     0.1631497683993824,
+     0.3884418434528164
+    ],
+    [
+     0.1724137931034483,
+     0.4059985369422092
+    ],
+    [
+     0.1806484817292846,
+     0.4242867593269934
+    ],
+    [
+     0.19197117858980958,
+     0.44330651060716897
+    ],
+    [
+     0.19763252702007206,
+     0.4586686174103877
+    ],
+    [
+     0.2074112197632527,
+     0.4769568397951719
+    ],
+    [
+     0.22079258878023675,
+     0.49890270665691294
+    ],
+    [
+     0.23674729799279465,
+     0.5157278712509145
+    ],
+    [
+     0.26042202779207413,
+     0.5340160936356986
+    ],
+    [
+     0.27380339680905813,
+     0.5471836137527433
+    ],
+    [
+     0.29181677817807516,
+     0.5683979517190929
+    ],
+    [
+     0.3031394750386001,
+     0.5881492318946598
+    ],
+    [
+     0.31652084405558417,
+     0.60424286759327
+    ],
+    [
+     0.34637159032424086,
+     0.6291148500365764
+    ],
+    [
+     0.36541430777148737,
+     0.6459400146305779
+    ],
+    [
+     0.3834276891405044,
+     0.6649597659107535
+    ],
+    [
+     0.4076170869788986,
+     0.6891002194586686
+    ],
+    [
+     0.4199691199176531,
+     0.6993416239941478
+    ],
+    [
+     0.4369531652084406,
+     0.717629846378932
+    ],
+    [
+     0.45753988677303137,
+     0.7410387710314558
+    ],
+    [
+     0.4755532681420484,
+     0.7564008778346745
+    ],
+    [
+     0.503345342254246,
+     0.7776152158010241
+    ],
+    [
+     0.5285640761708698,
+     0.787125091441112
+    ],
+    [
+     0.5651055069480185,
+     0.8024871982443307
+    ],
+    [
+     0.602161605764282,
+     0.8222384784198976
+    ],
+    [
+     0.6304683479155945,
+     0.8427212874908558
+    ],
+    [
+     0.6747297992794647,
+     0.8712509144111192
+    ],
+    [
+     0.7097272259392692,
+     0.8829553767373811
+    ],
+    [
+     0.7617086978898611,
+     0.9012435991221653
+    ],
+    [
+     0.8059701492537313,
+     0.9239209948792977
+    ],
+    [
+     0.8579516212043232,
+     0.9451353328456474
+    ],
+    [
+     0.9464745239320638,
+     0.978054133138259
+    ],
+    [
+     1.0,
+     1.0
+    ]
+   ],
+   "Logistic regression": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.006176016469377252,
+     0.02852962692026335
+    ],
+    [
+     0.013896037056098817,
+     0.05047549378200439
+    ],
+    [
+     0.02110138960370561,
+     0.07900512070226774
+    ],
+    [
+     0.032938754503345345,
+     0.10460863204096561
+    ],
+    [
+     0.04374678332475553,
+     0.12655449890270665
+    ],
+    [
+     0.050437467833247554,
+     0.1389904901243599
+    ],
+    [
+     0.06073082861554297,
+     0.1667885881492319
+    ],
+    [
+     0.06948018528049409,
+     0.19897585954645208
+    ],
+    [
+     0.07720020586721564,
+     0.2194586686174104
+    ],
+    [
+     0.08543489449305199,
+     0.25603511338697876
+    ],
+    [
+     0.09830159547092125,
+     0.2728602779809802
+    ],
+    [
+     0.10602161605764282,
+     0.29626920263350404
+    ],
+    [
+     0.11682964487905301,
+     0.32040965618141914
+    ],
+    [
+     0.12609366958311888,
+     0.33650329188002925
+    ],
+    [
+     0.13381369016984046,
+     0.36649597659107536
+    ],
+    [
+     0.1405043746783325,
+     0.37820043891733723
+    ],
+    [
+     0.15079773546062789,
+     0.39941477688368693
+    ],
+    [
+     0.16006176016469378,
+     0.41843452816386245
+    ],
+    [
+     0.1682964487905301,
+     0.43306510607168985
+    ],
+    [
+     0.1791044776119403,
+     0.44842721287490855
+    ],
+    [
+     0.19197117858980958,
+     0.4740307242136064
+    ],
+    [
+     0.20432321152856409,
+     0.4893928310168252
+    ],
+    [
+     0.21358723623262996,
+     0.5062179956108266
+    ],
+    [
+     0.2254246011322697,
+     0.5230431602048281
+    ],
+    [
+     0.2326299536798765,
+     0.5405998536942209
+    ],
+    [
+     0.2444673185795162,
+     0.5662033650329188
+    ],
+    [
+     0.25939269171384455,
+     0.5837600585223116
+    ],
+    [
+     0.27328872876994337,
+     0.6013167520117044
+    ],
+    [
+     0.28306742151312403,
+     0.6203365032918801
+    ],
+    [
+     0.29490478641276374,
+     0.6378931967812729
+    ],
+    [
+     0.3031394750386001,
+     0.6576444769568398
+    ],
+    [
+     0.3175501801338137,
+     0.6730065837600585
+    ],
+    [
+     0.3299022130725682,
+     0.68983174835406
+    ],
+    [
+     0.3401955738548636,
+     0.7066569129480614
+    ],
+    [
+     0.35254760679361813,
+     0.7183613752743233
+    ],
+    [
+     0.3674729799279465,
+     0.731528895391368
+    ],
+    [
+     0.37725167267112714,
+     0.7461594732991953
+    ],
+    [
+     0.3880597014925373,
+     0.7564008778346745
+    ],
+    [
+     0.397838394235718,
+     0.7702999268471105
+    ],
+    [
+     0.4148224395265054,
+     0.7878566203365033
+    ],
+    [
+     0.4240864642305713,
+     0.7988295537673739
+    ],
+    [
+     0.442614513638703,
+     0.8119970738844184
+    ],
+    [
+     0.45856922285126095,
+     0.8244330651060717
+    ],
+    [
+     0.4755532681420484,
+     0.8376005852231163
+    ],
+    [
+     0.4945959855892949,
+     0.8493050475493782
+    ],
+    [
+     0.5043746783324755,
+     0.866861741038771
+    ],
+    [
+     0.5259907359752959,
+     0.8778346744696416
+    ],
+    [
+     0.5393721049922799,
+     0.8924652523774689
+    ],
+    [
+     0.5532681420483788,
+     0.902706656912948
+    ],
+    [
+     0.5877509006690684,
+     0.9122165325530358
+    ],
+    [
+     0.6093669583118888,
+     0.9217264081931237
+    ],
+    [
+     0.6330416881111683,
+     0.9312362838332114
+    ],
+    [
+     0.6644364384971694,
+     0.944403803950256
+    ],
+    [
+     0.6891405043746783,
+     0.9539136795903438
+    ],
+    [
+     0.7225939269171384,
+     0.9634235552304315
+    ],
+    [
+     0.7601646937725167,
+     0.972201901975128
+    ],
+    [
+     0.7997941327843541,
+     0.9817117776152158
+    ],
+    [
+     0.8589809572825527,
+     0.991953182150695
+    ],
+    [
+     1.0,
+     1.0
+    ]
+   ],
+   "Gradient boosting": [
+    [
+     0.0,
+     0.0
+    ],
+    [
+     0.0066906845084920225,
+     0.026335040234089245
+    ],
+    [
+     0.02007205352547607,
+     0.04754937820043892
+    ],
+    [
+     0.034997426659804425,
+     0.08412582297000731
+    ],
+    [
+     0.041173443129181676,
+     0.1097293343087052
+    ],
+    [
+     0.048893463715903245,
+     0.13313825896122897
+    ],
+    [
+     0.05867215645908389,
+     0.168983174835406
+    ],
+    [
+     0.06690684508492023,
+     0.19092904169714703
+    ],
+    [
+     0.07462686567164178,
+     0.2150694952450622
+    ],
+    [
+     0.08389089037570767,
+     0.2333577176298464
+    ],
+    [
+     0.09624292331446217,
+     0.2538405267008047
+    ],
+    [
+     0.10396294390118374,
+     0.2765179224579371
+    ],
+    [
+     0.11219763252702007,
+     0.30651060716898315
+    ],
+    [
+     0.11940298507462686,
+     0.3284564740307242
+    ],
+    [
+     0.12969634585692227,
+     0.3445501097293343
+    ],
+    [
+     0.13741636644364386,
+     0.36430138990490124
+    ],
+    [
+     0.1471950591868245,
+     0.3847841989758595
+    ],
+    [
+     0.15697375193000515,
+     0.4038039502560351
+    ],
+    [
+     0.1688111168296449,
+     0.42062911485003657
+    ],
+    [
+     0.18219248584662892,
+     0.4359912216532553
+    ],
+    [
+     0.19557385486361298,
+     0.45501097293343085
+    ],
+    [
+     0.20174987133299022,
+     0.47329919531821507
+    ],
+    [
+     0.208955223880597,
+     0.4908558888076079
+    ],
+    [
+     0.21718991250643335,
+     0.5084125822970007
+    ],
+    [
+     0.22645393721049922,
+     0.5223116313094367
+    ],
+    [
+     0.2377766340710242,
+     0.5405998536942209
+    ],
+    [
+     0.24755532681420483,
+     0.5537673738112655
+    ],
+    [
+     0.25630468347915597,
+     0.5742501828822238
+    ],
+    [
+     0.26505404014410705,
+     0.5874177029992684
+    ],
+    [
+     0.27380339680905813,
+     0.60424286759327
+    ],
+    [
+     0.2846114256304684,
+     0.6159473299195318
+    ],
+    [
+     0.29541945445187856,
+     0.634235552304316
+    ],
+    [
+     0.3103448275862069,
+     0.6532553035844916
+    ],
+    [
+     0.3221821924858466,
+     0.6671543525969276
+    ],
+    [
+     0.33350488934637157,
+     0.681784930504755
+    ],
+    [
+     0.34894493051981473,
+     0.7000731528895391
+    ],
+    [
+     0.3648996397323726,
+     0.7161667885881492
+    ],
+    [
+     0.3757076685537828,
+     0.7278712509144111
+    ],
+    [
+     0.3885743695316521,
+     0.7483540599853694
+    ],
+    [
+     0.40349974266598043,
+     0.7629846378931968
+    ],
+    [
+     0.41945445187853836,
+     0.7783467446964155
+    ],
+    [
+     0.43540916109109623,
+     0.7922457937088515
+    ],
+    [
+     0.4508492022645394,
+     0.8061448427212875
+    ],
+    [
+     0.46937725167267114,
+     0.8207754206291149
+    ],
+    [
+     0.4894493051981472,
+     0.8339429407461595
+    ],
+    [
+     0.5141533710756562,
+     0.84491587417703
+    ],
+    [
+     0.5331960885229027,
+     0.8573518653986832
+    ],
+    [
+     0.5455481214616572,
+     0.8712509144111192
+    ],
+    [
+     0.5594441585177561,
+     0.8822238478419897
+    ],
+    [
+     0.5779722079258878,
+     0.8961228968544257
+    ],
+    [
+     0.5944415851775605,
+     0.908558888076079
+    ],
+    [
+     0.6176016469377251,
+     0.9188002926115582
+    ],
+    [
+     0.6412763767370047,
+     0.9312362838332114
+    ],
+    [
+     0.6644364384971694,
+     0.9429407461594733
+    ],
+    [
+     0.6834791559444159,
+     0.9531821506949525
+    ],
+    [
+     0.7164179104477612,
+     0.9612289685442575
+    ],
+    [
+     0.7431806484817293,
+     0.9707388441843453
+    ],
+    [
+     0.7961914565105507,
+     0.9809802487198245
+    ],
+    [
+     0.8780236747297993,
+     0.9897585954645208
+    ],
+    [
+     1.0,
+     1.0
+    ]
+   ]
+  },
+  "features": [
+   "recency",
+   "frequency",
+   "monetary",
+   "avg_order",
+   "tenure",
+   "n_products",
+   "inv_last_90",
+   "rev_last_90",
+   "mean_gap",
+   "uk",
+   "n_returns",
+   "return_ratio",
+   "aov_trend"
+  ],
+  "best": "Logistic regression",
+  "importance": [
+   {
+    "feature": "tenure",
+    "drop": 0.0463945439414937,
+    "sd": 0.003626830271413934
+   },
+   {
+    "feature": "inv_last_90",
+    "drop": 0.03365309014797861,
+    "sd": 0.005321451310543225
+   },
+   {
+    "feature": "recency",
+    "drop": 0.032117820704012076,
+    "sd": 0.003903916208324998
+   },
+   {
+    "feature": "mean_gap",
+    "drop": 0.023243869445246517,
+    "sd": 0.003370766051627148
+   },
+   {
+    "feature": "n_products",
+    "drop": 0.010286282684903014,
+    "sd": 0.0027684468505279176
+   },
+   {
+    "feature": "n_returns",
+    "drop": 0.003985094330079971,
+    "sd": 0.0016867744509655516
+   },
+   {
+    "feature": "rev_last_90",
+    "drop": 0.002722959126622911,
+    "sd": 0.0011461672413321375
+   },
+   {
+    "feature": "frequency",
+    "drop": 0.001343181928563116,
+    "sd": 0.0010618209458810564
+   },
+   {
+    "feature": "monetary",
+    "drop": 0.0008802191399031786,
+    "sd": 0.0008391942627360192
+   },
+   {
+    "feature": "aov_trend",
+    "drop": 0.0007456097912676244,
+    "sd": 0.0004096439357287715
+   },
+   {
+    "feature": "avg_order",
+    "drop": 0.00016465361309884555,
+    "sd": 0.0007004217908924965
+   },
+   {
+    "feature": "uk",
+    "drop": 9.148817374161252e-05,
+    "sd": 0.0004148862576042278
+   },
+   {
+    "feature": "return_ratio",
+    "drop": -4.0962606185631265e-05,
+    "sd": 4.9827968103793734e-05
+   }
+  ],
+  "calibration": [
+   {
+    "pred": 0.04871811508364823,
+    "actual": 0.09214501510574018,
+    "n": 662
+   },
+   {
+    "pred": 0.2148606726314863,
+    "actual": 0.29154078549848944,
+    "n": 662
+   },
+   {
+    "pred": 0.40799743323003623,
+    "actual": 0.4607250755287009,
+    "n": 662
+   },
+   {
+    "pred": 0.6155279592254398,
+    "actual": 0.5604229607250756,
+    "n": 662
+   },
+   {
+    "pred": 0.7489447602224026,
+    "actual": 0.6601208459214502,
+    "n": 662
+   }
+  ]
+ },
+ "at_risk": [
+  {
+   "customer": 12830,
+   "churn_prob": 0.3381457056288836,
+   "monetary": 6814.64,
+   "recency": 37,
+   "frequency": 6,
+   "segment": "Loyal"
+  },
+  {
+   "customer": 13027,
+   "churn_prob": 0.28210703242798035,
+   "monetary": 6912.0,
+   "recency": 113,
+   "frequency": 6,
+   "segment": "At risk (was loyal)"
+  },
+  {
+   "customer": 16180,
+   "churn_prob": 0.17731530506833632,
+   "monetary": 10254.18,
+   "recency": 100,
+   "frequency": 8,
+   "segment": "At risk (was loyal)"
+  },
+  {
+   "customer": 17723,
+   "churn_prob": 0.47921089545961354,
+   "monetary": 3276.4000000000005,
+   "recency": 127,
+   "frequency": 6,
+   "segment": "At risk (was loyal)"
+  },
+  {
+   "customer": 12435,
+   "churn_prob": 0.20001975961514237,
+   "monetary": 7829.89,
+   "recency": 79,
+   "frequency": 2,
+   "segment": "Hibernating"
+  },
+  {
+   "customer": 18073,
+   "churn_prob": 0.38571759926112653,
+   "monetary": 3859.82,
+   "recency": 114,
+   "frequency": 12,
+   "segment": "At risk (was loyal)"
+  },
+  {
+   "customer": 14364,
+   "churn_prob": 0.3638486313257773,
+   "monetary": 3717.35,
+   "recency": 108,
+   "frequency": 8,
+   "segment": "At risk (was loyal)"
+  },
+  {
+   "customer": 16041,
+   "churn_prob": 0.4269189207806737,
+   "monetary": 3166.4,
+   "recency": 30,
+   "frequency": 3,
+   "segment": "Champions"
+  },
+  {
+   "customer": 16182,
+   "churn_prob": 0.18404572463872737,
+   "monetary": 6617.65,
+   "recency": 72,
+   "frequency": 4,
+   "segment": "At risk (was loyal)"
+  },
+  {
+   "customer": 12758,
+   "churn_prob": 0.3842946308527493,
+   "monetary": 2791.59,
+   "recency": 116,
+   "frequency": 2,
+   "segment": "Hibernating"
+  },
+  {
+   "customer": 16532,
+   "churn_prob": 0.15837299001892485,
+   "monetary": 6748.8,
+   "recency": 17,
+   "frequency": 3,
+   "segment": "Champions"
+  },
+  {
+   "customer": 12643,
+   "churn_prob": 0.35123253386346753,
+   "monetary": 3041.64,
+   "recency": 128,
+   "frequency": 6,
+   "segment": "At risk (was loyal)"
+  }
+ ],
+ "at_risk_total_value": 443181.03793156275,
+ "scored_customers": 4324,
+ "at_risk_pool": 2482,
+ "train_recency_p95": 128.0
+};
+const $ = (s, el = document) => el.querySelector(s);
+const NS = 'http://www.w3.org/2000/svg';
+const gbp = n => (n < 0 ? '-' : '') + '£' + Math.abs(Math.round(n)).toLocaleString('en-GB');
+const gbpk = n => Math.abs(n) >= 1e6 ? '£' + (n / 1e6).toFixed(2) + 'M' : Math.abs(n) >= 1e4 ? '£' + Math.round(n / 1e3) + 'k' : Math.abs(n) >= 1e3 ? '£' + (n / 1e3).toFixed(1) + 'k' : '£' + Math.round(n);
+const pc = (x, d = 0) => (x * 100).toFixed(d) + '%';
+const num = n => Math.round(n).toLocaleString('en-GB');
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const mlabel = s => MON[+s.slice(5) - 1];
+const H = id => R.hypotheses.find(h => h.id === id).evidence;
+const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+const html = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstChild; };
+
+/* ---------- tooltip ---------- */
+const tip = $('#tip');
+function showTip(content, ev) {
+  tip.innerHTML = content; tip.style.display = 'block';
+  const r = tip.getBoundingClientRect(); let x = ev.clientX + 14, y = ev.clientY + 14;
+  if (x + r.width > innerWidth - 8) x = ev.clientX - r.width - 14;
+  if (y + r.height > innerHeight - 8) y = ev.clientY - r.height - 14;
+  tip.style.left = Math.max(8, x) + 'px'; tip.style.top = Math.max(8, y) + 'px';
+}
+const hideTip = () => { tip.style.display = 'none'; };
+const row = (c, a, b) => `<div><span>${c ? `<i style="background:${c}"></i>` : ''}${a}</span><span>${b}</span></div>`;
+
+/* ---------- charts ---------- */
+const niceScale = v => { const p = Math.pow(10, Math.floor(Math.log10(v)) - 1);
+  for (const q of [1, 2, 2.5, 5, 10, 20, 25, 50, 100]) { const s = q * p, n = Math.ceil(v / s); if (n <= 5) return { ymax: n * s, ticks: n }; } return { ymax: v, ticks: 4 }; };
+
+function frame(host, W, Hh, m) {
+  host.innerHTML = '';
+  const svg = el('svg', { viewBox: `0 0 ${W} ${Hh}`, class: 'chart', role: 'img' }, host);
+  return { svg, iw: W - m.l - m.r, ih: Hh - m.t - m.b, ...m };
+}
+function yAxis(svg, f, ymin, ymax, ticks, fmt) {
+  const ys = v => f.t + f.ih - (v - ymin) / (ymax - ymin) * f.ih;
+  for (let i = 0; i <= ticks; i++) {
+    const v = ymin + (ymax - ymin) * i / ticks, y = ys(v);
+    el('line', { x1: f.l, x2: f.l + f.iw, y1: y, y2: y, stroke: i ? 'var(--grid)' : 'var(--axis)', 'stroke-width': 1 }, svg);
+    const t = el('text', { x: f.l - 8, y: y + 3.5, 'text-anchor': 'end' }, svg); t.textContent = fmt(v);
+  }
+  return ys;
+}
+
+/* column chart, stacked or single series, optional highlight band */
+function columns(host, o) {
+  const W = o.W || 720, Hh = o.h || 290, f = frame(host, W, Hh, { l: 46, r: 8, t: 12, b: 34 }), n = o.labels.length;
+  const totals = o.labels.map((_, i) => o.stacked ? o.series.reduce((a, s) => a + s.values[i], 0) : Math.max(...o.series.map(s => s.values[i])));
+  const sc0 = niceScale(Math.max(...totals) * 1.02), ymax = sc0.ymax, ys = yAxis(f.svg, f, 0, ymax, sc0.ticks, o.yfmt);
+  const step = f.iw / n, bw = Math.min(40, step * .62), xs = i => f.l + step * i + step / 2;
+  if (o.band) { el('rect', { x: f.l + step * o.band[0], width: step * (o.band[1] - o.band[0] + 1), y: f.t, height: f.ih, fill: 'var(--band)' }, f.svg);
+    const bt = el('text', { x: f.l + step * (o.band[0] + (o.band[1] - o.band[0] + 1) / 2), y: f.t + 11, 'text-anchor': 'middle', class: 't2' }, f.svg); bt.textContent = o.bandLabel; }
+  const hov = el('rect', { y: f.t, height: f.ih, width: step, fill: 'var(--hover)', opacity: 0 }, f.svg);
+  o.labels.forEach((lb, i) => {
+    let base = 0;
+    o.series.forEach((s, k) => {
+      const v = s.values[i]; if (!v) return; const h = v / ymax * f.ih;
+      const x = o.stacked ? xs(i) - bw / 2 : xs(i) - bw / 2 + k * bw / o.series.length, w = o.stacked ? bw : bw / o.series.length;
+      const y = f.t + f.ih - (o.stacked ? base : 0) - h;
+      el('rect', { x, y, width: w, height: Math.max(h, 0), fill: s.color, stroke: 'var(--surface)', 'stroke-width': o.stacked ? 2 : 0, rx: 2, opacity: o.dim && o.dim.includes(i) ? .55 : 1 }, f.svg);
+      base += h;
+    });
+    const t = el('text', { x: xs(i), y: Hh - 16, 'text-anchor': 'middle' }, f.svg); t.textContent = lb;
+    if (o.years && o.years[i]) { const y = el('text', { x: xs(i), y: Hh - 3, 'text-anchor': 'middle', class: 't2' }, f.svg); y.textContent = o.years[i]; }
+    const hit = el('rect', { x: f.l + step * i, y: f.t, width: step, height: f.ih + 30, fill: 'transparent' }, f.svg);
+    hit.addEventListener('pointermove', ev => { hov.setAttribute('x', f.l + step * i); hov.setAttribute('opacity', 1); showTip(o.tip(i), ev); });
+    hit.addEventListener('pointerleave', () => { hov.setAttribute('opacity', 0); hideTip(); });
+  });
+  f.svg.setAttribute('aria-label', o.aria);
+}
+
+/* line chart over categories */
+function lines(host, o) {
+  const W = o.W || 720, Hh = o.h || 230, f = frame(host, W, Hh, { l: 46, r: 12, t: 12, b: 34 }), n = o.labels.length;
+  const ymax = o.ymax, ys = yAxis(f.svg, f, 0, ymax, 3, o.yfmt), step = f.iw / n, xs = i => f.l + step * i + step / 2;
+  if (o.band) el('rect', { x: f.l + step * o.band[0], width: step * (o.band[1] - o.band[0] + 1), y: f.t, height: f.ih, fill: 'var(--band)' }, f.svg);
+  o.series.forEach(s => {
+    el('path', { d: s.values.map((v, i) => (i ? 'L' : 'M') + xs(i) + ' ' + ys(v)).join(' '), fill: 'none', stroke: s.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, f.svg);
+  });
+  const cross = el('line', { y1: f.t, y2: f.t + f.ih, stroke: 'var(--axis)', 'stroke-width': 1, opacity: 0 }, f.svg);
+  const dots = o.series.map(s => el('circle', { r: 4.5, fill: s.color, stroke: 'var(--surface)', 'stroke-width': 2, opacity: 0 }, f.svg));
+  o.labels.forEach((lb, i) => {
+    const t = el('text', { x: xs(i), y: Hh - 16, 'text-anchor': 'middle' }, f.svg); t.textContent = lb;
+    if (o.years && o.years[i]) { const y = el('text', { x: xs(i), y: Hh - 3, 'text-anchor': 'middle', class: 't2' }, f.svg); y.textContent = o.years[i]; }
+    const hit = el('rect', { x: f.l + step * i, y: f.t, width: step, height: f.ih + 30, fill: 'transparent' }, f.svg);
+    hit.addEventListener('pointermove', ev => { cross.setAttribute('x1', xs(i)); cross.setAttribute('x2', xs(i)); cross.setAttribute('opacity', 1);
+      dots.forEach((d, k) => { d.setAttribute('cx', xs(i)); d.setAttribute('cy', ys(o.series[k].values[i])); d.setAttribute('opacity', 1); }); showTip(o.tip(i), ev); });
+    hit.addEventListener('pointerleave', () => { cross.setAttribute('opacity', 0); dots.forEach(d => d.setAttribute('opacity', 0)); hideTip(); });
+  });
+  f.svg.setAttribute('aria-label', o.aria);
+}
+
+/* x-y chart on 0..1 axes (ROC, Lorenz) */
+function xy(host, o) {
+  const W = 480, Hh = 400, f = frame(host, W, Hh, { l: 46, r: 12, t: 12, b: 44 });
+  const ys = yAxis(f.svg, f, 0, 1, 4, v => pc(v)), xs = v => f.l + v * f.iw;
+  for (let i = 0; i <= 4; i++) { const t = el('text', { x: xs(i / 4), y: f.t + f.ih + 16, 'text-anchor': 'middle' }, f.svg); t.textContent = pc(i / 4); }
+  const xt = el('text', { x: f.l + f.iw / 2, y: Hh - 4, 'text-anchor': 'middle', class: 't2' }, f.svg); xt.textContent = o.xlabel;
+  const yt = el('text', { x: 0, y: 0, transform: `translate(11 ${f.t + f.ih / 2}) rotate(-90)`, 'text-anchor': 'middle', class: 't2' }, f.svg); yt.textContent = o.ylabel;
+  el('line', { x1: xs(0), y1: ys(0), x2: xs(1), y2: ys(1), stroke: 'var(--muted)', 'stroke-dasharray': '4 4', 'stroke-width': 1 }, f.svg);
+  o.series.forEach(s => el('path', { d: s.pts.map((p, i) => (i ? 'L' : 'M') + xs(p[0]) + ' ' + ys(p[1])).join(' '), fill: 'none', stroke: s.color, 'stroke-width': 2, 'stroke-dasharray': s.dash || '', 'stroke-linejoin': 'round' }, f.svg));
+  const cross = el('line', { y1: f.t, y2: f.t + f.ih, stroke: 'var(--axis)', opacity: 0 }, f.svg);
+  const hit = el('rect', { x: f.l, y: f.t, width: f.iw, height: f.ih, fill: 'transparent' }, f.svg);
+  const at = (pts, x) => { let b = pts[0]; for (const p of pts) if (Math.abs(p[0] - x) < Math.abs(b[0] - x)) b = p; return b; };
+  hit.addEventListener('pointermove', ev => {
+    const r = f.svg.getBoundingClientRect(), x = Math.min(1, Math.max(0, ((ev.clientX - r.left) / r.width * W - f.l) / f.iw));
+    cross.setAttribute('x1', xs(x)); cross.setAttribute('x2', xs(x)); cross.setAttribute('opacity', 1);
+    showTip(o.tip(x, o.series.map(s => ({ s, p: at(s.pts, x) }))), ev);
+  });
+  hit.addEventListener('pointerleave', () => { cross.setAttribute('opacity', 0); hideTip(); });
+  f.svg.setAttribute('aria-label', o.aria);
+}
+
+/* ---------- derived data ---------- */
+const M = R.months, Y = M.map((m, i) => (i === 0 || m.endsWith('-01')) ? m.slice(0, 4) : '');
+const LAB = M.map((m, i) => mlabel(m) + (i === M.length - 1 ? '*' : ''));
+const iSep = M.indexOf('2011-09'), iNov = M.indexOf('2011-11'), iDec = M.length - 1;
+const st = R.state_revenue, sc = R.state_customers;
+const tot = i => st.new[i] + st.continuing[i] + st.reactivated[i];
+const e1 = H('H1'), e2 = H('H2'), e3 = H('H3');
+const verdict = v => v === 'Supported'
+  ? `<span class="pill"><svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="6" fill="var(--good)"/><path d="M3.2 6.2l2 2 3.6-4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>${v}</span>`
+  : `<span class="pill"><svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="6" fill="var(--crit)"/><path d="M3.8 3.8l4.4 4.4M8.2 3.8L3.8 8.2" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>${v}</span>`;
+const XM = /CHRISTMAS|XMAS|SANTA|ADVENT|REINDEER|SNOW|TINSEL|STOCKING|BAUBLE|NOEL|HOLLY|GINGERBREAD|PAPER CHAIN/i;
+const lede = `A UK gift-ware retailer's transaction log, ${R.date_range[0].split('-').reverse().join('/')} to ${R.date_range[1].split('-').reverse().join('/')}. ${num(R.clean_rows)} clean lines, ${num(R.n_invoices)} orders and ${num(R.n_customers)} identified customers after cleaning. Every figure on this page is computed by pipeline.py.`;
+$('#lede').textContent = lede;
+
+/* ---------- tab content ---------- */
+const TABS = [['overview', 'Overview'], ['cleaning', 'Data cleaning'], ['customers', 'Customers'], ['hypotheses', 'Hypotheses'], ['model', 'Churn model'], ['method', 'Method & limits']];
+const app = $('#app'), secs = {};
+TABS.forEach(([id]) => { const s = document.createElement('section'); s.className = 'tab'; s.id = 'tab-' + id; s.setAttribute('role', 'tabpanel'); s.hidden = true; app.appendChild(s); secs[id] = s; });
+
+function overview() {
+  const s = secs.overview;
+  s.innerHTML = `
+  <div class="card hero">
+    <div class="stack">
+      <span class="eyebrow">The finding</span>
+      <h2>Q4 growth is more orders from a wide base of customers. It is not bigger baskets and it is not mainly Christmas stock.</h2>
+      <p class="sub">Average monthly revenue from identified customers rose ${pc(e1.rev_growth)} from June-August to September-November. About ${pc(e1.share_of_growth_from_order_count)} of that growth comes from the number of orders. Order size barely moved. Items matching Christmas keywords explain only ${pc(e2.share_from_christmas_keywords)} of the lift, and ${num(e2.products_growing)} different products grew.</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>+${pc(e1.order_count_growth)}</b><span>orders per month, Sep-Nov vs Jun-Aug</span></div>
+      <div class="fact"><b>+${pc(e1.mean_order_q4 / e1.mean_order_summer - 1)}</b><span>average order value (median ${gbp(e1.median_order_summer)} to ${gbp(e1.median_order_q4)})</span></div>
+      <div class="fact"><b>${pc(e2.share_from_christmas_keywords)}</b><span>of the product-level lift is Christmas-keyword stock</span></div>
+    </div>
+  </div>
+
+  <div class="card stack">
+    <div class="ctitle"><h3>Monthly revenue from identified customers, by customer type</h3><button class="btn" id="tblbtn" aria-expanded="false">Show table</button></div>
+    <div class="legend"><span><i style="background:var(--s1)"></i>Continuing (ordered in the prior 2 months)</span><span><i style="background:var(--s2)"></i>Reactivated (returned after a gap)</span><span><i style="background:var(--s3)"></i>New (first order)</span></div>
+    <div id="c-monthly"></div>
+    <div id="tbl-monthly" class="scroll" hidden></div>
+    <p class="note">* December 2011 covers 1-9 December only, so its drop is a data cut-off. Guest orders without a customer ID (${pc(R.guest_share_rev)} of revenue) are left out here.</p>
+  </div>
+
+  <div class="grid2">
+    <div class="card stack"><h3>Orders per month</h3><div id="c-orders"></div></div>
+    <div class="card stack"><h3>Average order value</h3><div id="c-aov"></div></div>
+  </div>
+
+  <div class="card stack">
+    <h3>What else the data shows</h3>
+    <div class="finding">
+      <span class="k">Cancelled orders distort rankings</span><span>${num(R.reversed_lines)} lines (${gbp(R.reversed_value)}) were orders placed and then fully reversed. Raw data ranks customer ${R.reversed_top[0].customer} as #${R.naive.rank[R.reversed_top[0].customer]} by spend because of a ${gbp(R.reversed_top[0].value)} order cancelled the same day.</span>
+      <span class="k">Revenue is concentrated</span><span>The top 10% of customers bring ${pc(R.top_share['10'])} of revenue (Gini ${R.gini.toFixed(2)}). ${pc(R.one_time_share)} of customers ordered once.</span>
+      <span class="k">Churn is predictable, modestly</span><span>A logistic model reaches AUC ${R.model.results['Logistic regression'].roc_auc.toFixed(2)} on a later, unseen period against ${R.model.results['Baseline: recency only'].roc_auc.toFixed(2)} for a recency-only rule.</span>
+      <span class="k">Country comparisons are thin</span><span>The UK is ${pc(R.uk_share)} of revenue. Netherlands and EIRE rank high on ${R.countries[1].customers} and ${R.countries[2].customers} customers, so they describe a few accounts.</span>
+    </div>
+  </div>`;
+  columns($('#c-monthly'), { labels: LAB, years: Y, stacked: true, band: [iSep, iNov], bandLabel: 'Sep-Nov', dim: [iDec],
+    series: [{ name: 'Continuing', color: 'var(--s1)', values: st.continuing }, { name: 'Reactivated', color: 'var(--s2)', values: st.reactivated }, { name: 'New', color: 'var(--s3)', values: st.new }],
+    yfmt: v => gbpk(v), aria: 'Stacked columns of monthly revenue by customer type, rising sharply from September to November 2011.',
+    tip: i => `<b>${mlabel(M[i])} ${M[i].slice(0, 4)}${i === iDec ? ' (1-9 Dec)' : ''}</b>${row('var(--s1)', 'Continuing', gbp(st.continuing[i]))}${row('var(--s2)', 'Reactivated', gbp(st.reactivated[i]))}${row('var(--s3)', 'New', gbp(st.new[i]))}${row('', 'Customers', num(R.monthly.customers[i]))}` });
+  columns($('#c-orders'), { labels: LAB, years: Y, band: [iSep, iNov], bandLabel: 'Sep-Nov', dim: [iDec], W: 420, h: 250, series: [{ name: 'Orders', color: 'var(--s1)', values: R.monthly.invoices }],
+    yfmt: v => num(v), aria: 'Columns of orders per month, highest in November 2011.',
+    tip: i => `<b>${mlabel(M[i])} ${M[i].slice(0, 4)}</b>${row('var(--s1)', 'Orders', num(R.monthly.invoices[i]))}` });
+  lines($('#c-aov'), { labels: LAB, years: Y, band: [iSep, iNov], ymax: 600, W: 420, h: 250, yfmt: v => '£' + v, series: [{ name: 'AOV', color: 'var(--s2)', values: R.monthly.aov }],
+    aria: 'Line of average order value by month, staying between 400 and 540 pounds.',
+    tip: i => `<b>${mlabel(M[i])} ${M[i].slice(0, 4)}</b>${row('var(--s2)', 'Average order', gbp(R.monthly.aov[i]))}${row('', 'Customers', num(R.monthly.customers[i]))}` });
+  const tb = $('#tbl-monthly');
+  tb.innerHTML = `<table><thead><tr><th>Month</th><th class="n">Continuing</th><th class="n">Reactivated</th><th class="n">New</th><th class="n">Total</th><th class="n">Orders</th><th class="n">Avg order</th></tr></thead><tbody>${M.map((m, i) => `<tr><td>${mlabel(m)} ${m.slice(0, 4)}${i === iDec ? '*' : ''}</td><td class="n">${gbp(st.continuing[i])}</td><td class="n">${gbp(st.reactivated[i])}</td><td class="n">${gbp(st.new[i])}</td><td class="n">${gbp(tot(i))}</td><td class="n">${num(R.monthly.invoices[i])}</td><td class="n">${gbp(R.monthly.aov[i])}</td></tr>`).join('')}</tbody></table>`;
+  $('#tblbtn').onclick = e => { tb.hidden = !tb.hidden; e.target.textContent = tb.hidden ? 'Show table' : 'Hide table'; e.target.setAttribute('aria-expanded', String(!tb.hidden)); };
+}
+
+function cleaning() {
+  const L = R.cleaning_log, raw = L[0].rows;
+  secs.cleaning.innerHTML = `
+  <div class="stack"><h2>Every cleaning rule, with what it removed</h2><p class="sub">Rows are removed in this order. Nothing is dropped silently: each step shows its row count and the money it touches, so you can disagree with a rule and rerun without it.</p></div>
+  <div class="card scroll"><table><thead><tr><th>Step</th><th class="n">Rows removed</th><th class="n">Rows left</th><th class="n">Revenue touched</th></tr></thead><tbody>
+  ${L.map(r => `<tr><td>${r.step}</td><td class="n">${r.removed ? num(r.removed) : '-'}</td><td class="n">${num(r.rows)}</td><td class="n">${r.value ? gbp(r.value) : '-'}</td></tr>`).join('')}
+  </tbody></table></div>
+  <div class="card stack">
+    <h3>Orders that were placed and then cancelled</h3>
+    <p class="note">A cancellation row (invoice number starting with C) is paired with the earlier order of the same product, quantity and customer. Both sides are removed, because that order never happened. ${num(R.reversed_lines)} pairs were found, worth ${gbp(R.reversed_value)}. The largest:</p>
+    <div class="scroll"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Date</th><th>Item</th><th class="n">Value</th></tr></thead><tbody>
+    ${R.reversed_top.map(r => `<tr><td class="mono">${r.invoice}</td><td class="mono">${r.customer}</td><td>${r.date}</td><td>${r.item}</td><td class="n">${gbp(r.value)}</td></tr>`).join('')}</tbody></table></div>
+    <div class="callout"><b>Why it matters.</b> Without this step, customer ${R.reversed_top[0].customer} ranks #${R.naive.rank[R.reversed_top[0].customer]} and customer ${R.reversed_top[1].customer} ranks #${R.naive.rank[R.reversed_top[1].customer]} by gross spend, on orders that were reversed. The top-1% revenue share reads ${pc(R.naive.top1pct_share, 1)} before cleaning and ${pc(R.top_share['1'], 1)} after.</div>
+  </div>
+  <div class="grid2">
+    <div class="card stack"><h3>Rows that are not products</h3>
+      <p class="note">Codes that are not five digits plus an optional letter suffix. They are fees and services, not sales of goods.</p>
+      <table><thead><tr><th>Code</th><th class="n">Rows</th><th class="n">Net value</th></tr></thead><tbody>${R.non_product_codes.slice(0, 4).map(r => `<tr><td class="mono">${r.code}</td><td class="n">${num(r.rows)}</td><td class="n">${gbp(r.value)}</td></tr>`).join('')}</tbody></table>
+      <p class="note">DOT (dotcom postage) is the largest "product" by revenue until it is removed.</p></div>
+    <div class="card stack"><h3>What remains after cleaning</h3>
+      <ul class="clean"><li>${gbp(R.returns_total)} of partial returns from ${num(R.returns_customers)} customers. The median customer returned ${pc(R.returns_median_ratio, 1)} of what they bought, and the top 10 returners hold ${pc(R.returns_top10_share)} of the value.</li>
+      <li>${num(R.price_outlier_lines)} lines priced more than 10x above or below the product's own median price. These are kept and listed in the repository output.</li>
+      <li>${R.n_high_value_invoices} orders flagged as unusually large (robust z above 3.5). Together they are ${pc(R.high_value_invoice_share)} of revenue, so they are real wholesale buying and stay in.</li></ul></div>
+  </div>
+  <div class="card stack"><h3>Largest legitimate orders</h3>
+    <div class="scroll"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Date</th><th class="n">Lines</th><th class="n">Value</th><th class="n">Robust z</th></tr></thead><tbody>
+    ${R.largest_invoices.map(r => `<tr><td class="mono">${r.invoice}</td><td class="mono">${r.customer}</td><td>${r.date}</td><td class="n">${r.lines}</td><td class="n">${gbp(r.value)}</td><td class="n">${r.z.toFixed(1)}</td></tr>`).join('')}</tbody></table></div></div>`;
+}
+
+function customers() {
+  const seg = R.rfm, mx = Math.max(...seg.map(s => Math.max(s.rev_share, s.cust_share)));
+  const C = R.cohort;
+  const stepIdx = v => v == null ? -1 : Math.min(6, Math.floor(v / 0.45 * 7));
+  secs.customers.innerHTML = `
+  <div class="stack"><h2>Who the customers are</h2><p class="sub">Spend is concentrated in a repeat-buying core. Most one-time buyers never come back.</p></div>
+  <div class="grid2">
+    <div class="card stack"><div class="ctitle"><h3>Revenue concentration</h3></div><div id="c-lorenz"></div>
+      <p class="note">Customers sorted from lowest to highest spend. The bottom 80% of customers bring ${pc(1 - R.top_share['20'])} of revenue. Gini ${R.gini.toFixed(2)}.</p></div>
+    <div class="card stack"><h3>RFM segments</h3>
+      <div class="legend"><span><i style="background:var(--s1)"></i>Share of customers</span><span><i style="background:var(--s2)"></i>Share of revenue</span></div>
+      <div class="scroll"><table><thead><tr><th>Segment</th><th>Share</th><th class="n">Customers</th><th class="n">Median days since order</th></tr></thead><tbody>
+      ${seg.map(s => `<tr><td>${s.segment}</td><td><div class="bars"><div class="bar-row"><div class="bar" style="width:${s.cust_share / mx * 100}%"></div><span>${pc(s.cust_share)}</span></div><div class="bar-row"><div class="bar o" style="width:${s.rev_share / mx * 100}%"></div><span>${pc(s.rev_share)}</span></div></div></td><td class="n">${num(s.customers)}</td><td class="n">${num(s.med_recency)}</td></tr>`).join('')}</tbody></table></div></div>
+  </div>
+  <div class="card stack"><h3>Cohort retention by first-order month</h3>
+    <p class="note">Share of each cohort that ordered again, by months since its first order. The December 2010 cohort is not a true new-customer cohort. The data starts that month, so it also holds every established customer, and that is why it retains better.</p>
+    <div class="scroll"><table class="heat"><thead><tr><th></th><th>Size</th>${Array.from({ length: 12 }, (_, i) => `<th>M${i + 1}</th>`).join('')}</tr></thead><tbody>
+    ${C.cohorts.map((c, i) => `<tr><td class="rl">${mlabel(c)} ${c.slice(2, 4)}</td><td class="rl n">${num(C.size[i])}</td>${Array.from({ length: 12 }, (_, a) => { const v = C.ret[i][a + 1]; if (v == null) return '<td class="c"></td>'; const k = stepIdx(v); return `<td class="c" style="background:var(--h${k});color:var(--i${k})" data-t="${mlabel(c)} ${c.slice(0, 4)} cohort, month ${a + 1}: ${pc(v)} of ${num(C.size[i])} customers">${(v * 100).toFixed(0)}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div></div>
+  <div class="card stack"><h3>Top countries</h3>
+    <div class="scroll"><table><thead><tr><th>Country</th><th class="n">Revenue</th><th class="n">Customers</th><th class="n">Orders</th><th class="n">Avg order</th></tr></thead><tbody>
+    ${R.countries.map(c => `<tr><td>${c.country}</td><td class="n">${gbp(c.revenue)}</td><td class="n">${num(c.customers)}${c.customers < 10 ? '<span class="tag">few accounts</span>' : ''}</td><td class="n">${num(c.invoices)}</td><td class="n">${gbp(c.aov)}</td></tr>`).join('')}</tbody></table></div></div>`;
+  xy($('#c-lorenz'), { xlabel: 'Cumulative share of customers (lowest spend first)', ylabel: 'Cumulative share of revenue', aria: 'Lorenz curve of customer revenue showing heavy concentration among the top customers.',
+    series: [{ name: 'Customers', color: 'var(--s1)', pts: R.lorenz }],
+    tip: (x, a) => `<b>Bottom ${pc(x)} of customers</b>${row('var(--s1)', 'Revenue share', pc(a[0].p[1], 1))}` });
+  secs.customers.querySelectorAll('td.c[data-t]').forEach(td => { td.addEventListener('pointermove', ev => showTip(td.dataset.t, ev)); td.addEventListener('pointerleave', hideTip); });
+}
+
+const sumR = (k, a, b) => st[k].slice(a, b + 1).reduce((x, y) => x + y, 0);
+const iJun = M.indexOf('2011-06'), iAug = M.indexOf('2011-08');
+const XD = {}; ['continuing', 'reactivated', 'new'].forEach(k => XD[k] = (sumR(k, iSep, iNov) - sumR(k, iJun, iAug)) / 3);
+const XS = {}; Object.keys(XD).forEach(k => XS[k] = XD[k] / (XD.continuing + XD.reactivated + XD.new));
+function hypotheses() {
+  const mv = e2.top_movers, mx = Math.max(...mv.map(m => m.uplift));
+  secs.hypotheses.innerHTML = `
+  <div class="stack"><h2>Three hypotheses, tested</h2><p class="sub">Each was written down before the test was run. One of them failed, and that result changed the headline.</p></div>
+  <div class="card stack">
+    <div class="ctitle"><h3>H1. ${H_('H1')}</h3>${verdict(R.hypotheses[0].verdict)}</div>
+    <p>Revenue per month rose ${pc(e1.rev_growth)}. Orders per month rose ${pc(e1.order_count_growth)}. Order count explains ${pc(e1.share_of_growth_from_order_count)} of the growth on a log scale.</p>
+    <ul class="clean"><li>Median order: ${gbp(e1.median_order_summer)} in summer, ${gbp(e1.median_order_q4)} in Sep-Nov. Mean: ${gbp(e1.mean_order_summer)} to ${gbp(e1.mean_order_q4)}.</li>
+    <li>Mann-Whitney U on ${num(e1.n_orders[0])} summer and ${num(e1.n_orders[1])} autumn orders gives p = ${e1.mannwhitney_p.toExponential(1)}. The 95% bootstrap interval for the median difference is ${gbp(e1.median_diff_ci[0])} to ${gbp(e1.median_diff_ci[1])}.</li>
+    <li>With this many orders even a small shift is statistically detectable. The size of the shift, about 2% on the median, is what matters, and it is small next to the 58% rise in order count.</li></ul>
+  </div>
+  <div class="card stack">
+    <div class="ctitle"><h3>H2. ${H_('H2')}</h3>${verdict(R.hypotheses[1].verdict)}</div>
+    <p>Christmas-keyword items go from ${pc(e2.christmas_share_of_revenue_summer, 1)} of revenue in summer to ${pc(e2.christmas_share_of_revenue_q4, 1)} in Sep-Nov. That is a real rise, but those items explain ${pc(e2.share_from_christmas_keywords)} of the monthly lift of ${gbp(e2.uplift_per_month)}.</p>
+    <ul class="clean"><li>${num(e2.products_growing)} products grew and ${num(e2.products_shrinking)} shrank. The 50 biggest gainers hold ${pc(e2.top50_share_of_growth)} of the growth and the top 200 hold ${pc(e2.top200_share_of_growth)}.</li>
+    <li>The top movers mix Christmas lines with winter and gift items such as hot water bottles, hand warmers and night lights.</li></ul>
+    <div class="stack" style="gap:6px;margin-top:4px"><span class="eyebrow">Largest monthly gains, Sep-Nov vs Jun-Aug</span>
+    ${mv.map(m => `<div class="bar-row" style="grid-template-columns:minmax(0,210px) minmax(0,1fr) auto"><span style="color:var(--ink)">${m.item}${XM.test(m.item) ? '<span class="tag">Christmas</span>' : ''}</span><div class="bar" style="width:${m.uplift / mx * 100}%"></div><span>${gbp(m.uplift)}</span></div>`).join('')}</div>
+  </div>
+  <div class="card stack">
+    <div class="ctitle"><h3>H3. ${H_('H3')}</h3>${verdict(R.hypotheses[2].verdict)}</div>
+    <p>${num(e3.returning_in_q4)} of the ${num(e3.summer_customers)} customers who ordered in summer ordered again in Sep-Nov (${pc(e3.returning_share)}). Their spend rose ${pc(e3.same_customer_growth)}. Customers who skipped summer account for ${pc(e3.q4_rev_share_from_customers_absent_in_summer)} of Sep-Nov revenue.</p>
+    <p class="note">Split of the extra monthly revenue by customer type: continuing ${pc(XS.continuing)}, reactivated ${pc(XS.reactivated)}, new ${pc(XS.new)}. My first guess was that reactivated customers drove the lift. The split shows they grow fastest in percentage terms but from a small base, so continuing customers supply most of the extra revenue.</p>
+  </div>`;
+}
+function H_(id) { return R.hypotheses.find(h => h.id === id).claim; }
+
+function model() {
+  const m = R.model, res = m.results, names = Object.keys(res), best = m.best;
+  const col = { 'Baseline: recency only': 'var(--muted)', 'Logistic regression': 'var(--s1)', 'Gradient boosting': 'var(--s2)' };
+  const imp = m.importance.slice(0, 7), mx = Math.max(...imp.map(i => i.drop));
+  const lab = { tenure: 'Days since first order', inv_last_90: 'Orders in last 90 days', recency: 'Days since last order', mean_gap: 'Mean days between orders', n_products: 'Distinct products bought', n_returns: 'Number of returns', frequency: 'Total orders', monetary: 'Total spend', avg_order: 'Average order value', rev_last_90: 'Spend in last 90 days', uk: 'UK customer', return_ratio: 'Returned share of spend', aov_trend: 'Order value trend' };
+  const span = (a, b) => { const t0 = new Date('2010-12-01'), t1 = new Date('2011-12-31'), d = x => (new Date(x) - t0) / (t1 - t0) * 100; return [d(a), d(b) - d(a)]; };
+  const days = (d, n) => new Date(new Date(d).getTime() + n * 864e5).toISOString().slice(0, 10);
+  const trSp = m.train_cutoffs.map((c, i) => { const [l, w] = span(c, days(c, m.horizon_days)); return `<div class="w lb" style="left:${l}%;width:${w}%;top:${24 + i * 20}px">label window ${i + 1}</div>`; }).join('');
+  const [tl, tw] = span(m.test_cutoff, '2011-12-09');
+  secs.model.innerHTML = `
+  <div class="stack"><h2>Which customers stop ordering?</h2>
+  <p class="sub">The question: for a customer we have seen so far, will they place no order in the next ${m.horizon_days} days? Features use only history before a snapshot date. The label looks ${m.horizon_days} days ahead.</p></div>
+  <div class="card stack"><h3>Time-based validation</h3>
+    <p class="note">Models train on four earlier snapshots and are scored on one later snapshot whose label window they never saw. A random split would let a model learn from the future, so none is used. The last training label window ends before the test snapshot (checked by an assertion in the code).</p>
+    <div class="tl">${[['2010-12-01', 'Dec 10'], ['2011-03-01', 'Mar'], ['2011-06-01', 'Jun'], ['2011-09-01', 'Sep'], ['2011-12-01', 'Dec 11']].map(([d, t]) => { const [l] = span(d, d); return `<div class="m" style="left:${l}%">${t}</div>`; }).join('')}
+      ${trSp}<div class="w tr" style="left:${tl}%;width:${tw}%;top:24px">test label window</div>
+      <div class="w" style="left:${span(m.test_cutoff, m.test_cutoff)[0]}%;top:48px;padding:0;color:var(--ink2)">▲ test snapshot ${m.test_cutoff}</div></div>
+    <p class="note">${num(m.train_rows)} training rows from four snapshots, ${num(m.test_rows)} test rows. Churn rate ${pc(m.train_churn_rate)} in training and ${pc(m.test_churn_rate)} in test.</p>
+  </div>
+  <div class="grid2">
+    <div class="card stack"><h3>Held-out results</h3>
+      <div class="scroll"><table><thead><tr><th>Model</th><th class="n">ROC AUC</th><th class="n">PR AUC</th><th class="n">Top-10% lift</th></tr></thead><tbody>
+      ${names.map(n => `<tr><td><span class="legend"><span><i class="ln" style="background:${col[n]}"></i>${n}</span></span></td><td class="n">${res[n].roc_auc.toFixed(3)}<br><span class="note">${res[n].auc_ci[0].toFixed(2)}-${res[n].auc_ci[1].toFixed(2)}</span></td><td class="n">${res[n].pr_auc.toFixed(3)}</td><td class="n">${res[n].top_decile_lift.toFixed(2)}x</td></tr>`).join('')}</tbody></table></div>
+      <p class="note">Intervals are 95% bootstrap over test customers. Both models beat the recency rule by ${res['Logistic regression'].gain_vs_baseline.toFixed(3)} and ${res['Gradient boosting'].gain_vs_baseline.toFixed(3)} AUC, and both gain intervals exclude zero. Logistic and boosting are statistically tied (gap interval ${R.lr_vs_gbm_gap_ci[0].toFixed(3)} to ${R.lr_vs_gbm_gap_ci[1].toFixed(3)}). Top-10% lift is capped near ${(1 / m.test_churn_rate).toFixed(1)}x here because ${pc(m.test_churn_rate)} of customers churn.</p></div>
+    <div class="card stack"><h3>ROC curves</h3>
+      <div class="legend">${names.map(n => `<span><i class="ln" style="background:${col[n]}"></i>${n}</span>`).join('')}</div><div id="c-roc"></div></div>
+  </div>
+  <div class="grid2">
+    <div class="card stack"><h3>What drives the prediction</h3><p class="note">Drop in held-out AUC when one feature is shuffled (${best}).</p>
+      ${imp.map(i => `<div class="bar-row" style="grid-template-columns:minmax(0,170px) minmax(0,1fr) auto"><span style="color:var(--ink)">${lab[i.feature] || i.feature}</span><div class="bar" style="width:${Math.max(i.drop, 0) / mx * 100}%"></div><span>${i.drop.toFixed(3)}</span></div>`).join('')}
+      <p class="note">Customer age and recent activity matter most. Return behaviour adds little.</p></div>
+    <div class="card stack"><h3>Calibration on the test period</h3>
+      <div class="legend"><span><i style="background:var(--s1)"></i>Predicted</span><span><i style="background:var(--s2)"></i>Actual</span></div>
+      ${m.calibration.map((c, i) => `<div class="bars"><span class="note">Risk quintile ${i + 1} (${num(c.n)} customers)</span><div class="bar-row"><div class="bar" style="width:${c.pred * 100}%"></div><span>${pc(c.pred)}</span></div><div class="bar-row"><div class="bar o" style="width:${c.actual * 100}%"></div><span>${pc(c.actual)}</span></div></div>`).join('')}
+      <p class="note">Ranking is useful. The probabilities run too low for safe customers and too high for risky ones, so use the score to rank, not as a literal chance.</p></div>
+  </div>
+  <div class="card stack"><h3>Repeat buyers most worth a call this week</h3>
+    <p class="note">Model refit on all snapshots and scored at ${R.date_range[1]}. The pool is the ${num(R.at_risk_pool)} repeat buyers who ordered in the last 150 days. Value at risk is churn probability times past spend. Total across the pool: ${gbp(R.at_risk_total_value)}. The full list is in at_risk_customers.csv.</p>
+    <div class="scroll"><table><thead><tr><th>Customer</th><th>Segment</th><th class="n">Past spend</th><th class="n">Orders</th><th class="n">Days since last</th><th>Churn risk</th><th class="n">Value at risk</th></tr></thead><tbody>
+    ${R.at_risk.map(a => `<tr><td class="mono">${a.customer}</td><td>${a.segment}</td><td class="n">${gbp(a.monetary)}</td><td class="n">${a.frequency}</td><td class="n">${a.recency}</td><td><div class="bar-row"><div class="bar o" style="width:${a.churn_prob * 100}%"></div><span>${pc(a.churn_prob)}</span></div></td><td class="n">${gbp(a.churn_prob * a.monetary)}</td></tr>`).join('')}</tbody></table></div></div>`;
+  xy($('#c-roc'), { xlabel: 'False positive rate', ylabel: 'True positive rate', aria: 'ROC curves for three churn models; logistic regression and gradient boosting sit above the recency baseline.',
+    series: names.map(n => ({ name: n, color: col[n], dash: n.startsWith('Baseline') ? '5 4' : '', pts: m.roc[n] })),
+    tip: (x, a) => `<b>False positive rate ${pc(x)}</b>${a.map(r => row(col[r.s.name], r.s.name, pc(r.p[1]))).join('')}` });
+}
+
+function method() {
+  secs.method.innerHTML = `
+  <div class="stack"><h2>How it was built, and where it breaks</h2></div>
+  <div class="card stack"><h3>Architecture</h3>
+<div class="flow">
+    <div class="fc"><div class="fb"><b>Online_Retail.xlsx</b><span>541,909 raw rows</span></div></div><div class="fa">→</div>
+    <div class="fc"><div class="fb"><b>Clean</b><span>6 counted rules, writes clean_sales.csv</span></div></div><div class="fa">→</div>
+    <div class="fc"><div class="fb"><b>Explore</b><span>customer types, cohorts, RFM, anomalies</span></div><div class="fb"><b>Test hypotheses</b><span>Mann-Whitney, bootstrap</span></div><div class="fb"><b>Churn model</b><span>snapshot features, time split, logistic and boosting</span></div></div><div class="fa">→</div>
+    <div class="fc"><div class="fb"><b>results.json</b><span>feeds this dashboard</span></div><div class="fb"><b>at_risk_customers.csv</b><span>scored customers</span></div></div>
+  </div></div>
+  <div class="grid2">
+    <div class="card stack"><h3>Decisions that change the numbers</h3><ul class="clean">
+      <li>Matched order and cancellation pairs are removed from sales, not counted as returns. Unmatched cancellations stay as returns.</li>
+      <li>Guest orders stay in revenue totals and leave customer-level analysis, since they have no identity to follow.</li>
+      <li>The model's label is "no order within ${R.model.horizon_days} days", chosen so one snapshot is not dominated by the pre-Christmas rush.</li>
+      <li>Regression and boosting were compared on the held-out snapshot. Their gap is within noise, so the simpler logistic model is reported as the main model.</li></ul></div>
+    <div class="card stack"><h3>Known limitations</h3><ul class="clean">
+      <li>One year of data. Seasonality cannot be learned, so the test period includes the Q4 peak and its base rate differs from training.</li>
+      <li>Exact-quantity matching misses partial cancellations. Those stay in as returns.</li>
+      <li>The Christmas keyword list is a lower bound on seasonal stock.</li>
+      <li>Model selection saw the test snapshot. With three candidates and a tie at the top, the effect is small, but it is not a clean final exam.</li>
+      <li>The at-risk list scores recent repeat buyers only. Customers silent for months are outside the training range.</li>
+      <li>Nothing here is causal. The findings describe this retailer in this year.</li></ul></div>
+  </div>
+  <div class="grid2">
+    <div class="card stack"><h3>Testing and edge cases</h3><ul class="clean">
+      <li>tests.py checks that the cleaning log reconciles to the raw row count, no duplicates or negative quantities remain, and matched reversals net to zero.</li>
+      <li>tests.py checks that no training label window reaches the test snapshot and that all probabilities lie in 0 to 1.</li>
+      <li>Edge cases handled: 25% missing customer IDs, duplicate rows, non-product codes, same-day reversals, a partial final month, single-order customers (gap feature), and customers with zero prior returns.</li></ul></div>
+    <div class="card stack"><h3>Disclosure</h3><ul class="clean">
+      <li>Dataset: the supplied Online_Retail.xlsx (the public UCI Online Retail data). No other data or external APIs.</li>
+      <li>Libraries: pandas, NumPy, SciPy, scikit-learn.</li>
+      <li>AI-assisted: this analysis and dashboard were drafted with Claude. Every figure comes from the pipeline output and can be regenerated with <span class="mono">python pipeline.py</span>.</li></ul></div>
+  </div>`;
+}
+
+overview(); cleaning(); customers(); hypotheses(); model(); method();
+
+/* ---------- tabs ---------- */
+const bar = $('#tabs');
+function open(id) {
+  TABS.forEach(([t]) => { secs[t].hidden = t !== id; $('#tab-btn-' + t).setAttribute('aria-selected', String(t === id)); });
+  hideTip(); try { history.replaceState(null, '', '#' + id); } catch (e) {}
+  window.scrollTo(0, 0);
+}
+TABS.forEach(([id, label]) => { const b = document.createElement('button'); b.id = 'tab-btn-' + id; b.setAttribute('role', 'tab'); b.textContent = label; b.onclick = () => open(id); bar.appendChild(b); });
+let start = 'overview'; try { const h = location.hash.slice(1); if (TABS.some(t => t[0] === h)) start = h; } catch (e) {}
+open(start); window.scrollTo(0, 0);
+</script>
