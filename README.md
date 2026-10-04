@@ -1,4 +1,4 @@
-# Online Retail Investigation
+# Lift & Drift: Unpacking Seasonal Growth and Predicting Customer Churn
 Algothon'26 · **ALG-DATA-01 · The Mystery Dataset** (Data Science)
 
 A UK gift-ware retailer's transaction log (1 Dec 2010 to 9 Dec 2011, 541,909 rows). The project cleans it, finds what drives the autumn revenue surge, tests three hypotheses, and predicts which customers will stop ordering.
@@ -69,4 +69,4 @@ Handled: missing customer IDs, duplicates, fee/postage codes, same-day reversals
 ## Disclosure
 - Data: supplied `Online_Retail.xlsx` (matches the public UCI Online Retail dataset). No external APIs.
 - Libraries: pandas, NumPy, SciPy, scikit-learn.
-- AI-assisted: the code, analysis and dashboard were drafted with Claude (Anthropic). All figures come from `pipeline.py` output and can be regenerated.
+- AI-assisted: the dashboard were drafted with Claude (Anthropic). All figures come from `pipeline.py` output and can be regenerated.
