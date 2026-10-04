@@ -1,0 +1,488 @@
+<title>Online Retail Investigation</title>
+<style>
+/* Layout: sticky tab bar over a single 1040px column; summary first, evidence below, small-multiple charts in a 2-col grid.
+   Palette: reference dataviz palette (blue / orange / aqua categorical, blue sequential, status colors reserved for verdicts). */
+:root{
+  --bg:#f9f9f7; --surface:#fcfcfb; --ink:#0b0b0b; --ink2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --line:rgba(11,11,11,.10); --hover:rgba(11,11,11,.05); --band:rgba(42,120,214,.08);
+  --s1:#2a78d6; --s2:#eb6834; --s3:#1baf7a;
+  --good:#0ca30c; --good-ink:#006300; --crit:#d03b3b; --warn:#fab219;
+  --h0:#cde2fb; --h1:#9ec5f4; --h2:#6da7ec; --h3:#3987e5; --h4:#256abf; --h5:#184f95; --h6:#0d366b;
+  --i0:#0b0b0b; --i1:#0b0b0b; --i2:#0b0b0b; --i3:#ffffff; --i4:#ffffff; --i5:#ffffff; --i6:#ffffff;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --line:rgba(255,255,255,.10); --hover:rgba(255,255,255,.06); --band:rgba(57,135,229,.13);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --good-ink:#0ca30c;
+  --h0:#0d366b; --h1:#104281; --h2:#184f95; --h3:#256abf; --h4:#6da7ec; --h5:#9ec5f4; --h6:#cde2fb;
+  --i0:#ffffff; --i1:#ffffff; --i2:#ffffff; --i3:#ffffff; --i4:#0b0b0b; --i5:#0b0b0b; --i6:#0b0b0b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0d0d0d; --surface:#1a1a19; --ink:#ffffff; --ink2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --line:rgba(255,255,255,.10); --hover:rgba(255,255,255,.06); --band:rgba(57,135,229,.13);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --good-ink:#0ca30c;
+  --h0:#0d366b; --h1:#104281; --h2:#184f95; --h3:#256abf; --h4:#6da7ec; --h5:#9ec5f4; --h6:#cde2fb;
+  --i0:#ffffff; --i1:#ffffff; --i2:#ffffff; --i3:#ffffff; --i4:#0b0b0b; --i5:#0b0b0b; --i6:#0b0b0b; color-scheme:dark}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--sans);padding-inline:16px;padding-block:0 56px}
+.wrap{max-width:1040px;margin-inline:auto}
+h1,h2,h3{text-wrap:balance;line-height:1.2;margin:0}
+h1{font-size:1.9rem;letter-spacing:-.01em;font-weight:650}
+h2{font-size:1.2rem;font-weight:650}
+h3{font-size:1rem;font-weight:650}
+p{margin:0}
+.sub{color:var(--ink2);max-width:68ch}
+.eyebrow{font-size:.72rem;letter-spacing:.09em;text-transform:uppercase;color:var(--ink2);font-weight:600}
+header.top{padding-block:28px 18px;display:flex;flex-direction:column;gap:8px}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);border-bottom:1px solid var(--line);margin-inline:-16px;padding-inline:16px}
+nav .row{max-width:1040px;margin-inline:auto;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+nav button{background:none;border:0;border-bottom:2px solid transparent;color:var(--ink2);font:inherit;font-weight:600;padding:12px 12px 10px;cursor:pointer;white-space:nowrap}
+nav button:hover{color:var(--ink)}
+nav button[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--s1)}
+:focus-visible{outline:2px solid var(--s1);outline-offset:2px;border-radius:4px}
+section.tab{display:flex;flex-direction:column;gap:26px;padding-top:26px}
+section.tab[hidden]{display:none}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px;min-width:0}
+.card.plain{padding:0;border:0;background:none}
+.stack{display:flex;flex-direction:column;gap:12px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+@media(max-width:760px){.grid2,.grid3{grid-template-columns:minmax(0,1fr)}}
+.hero{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:24px;align-items:start}
+@media(max-width:760px){.hero{grid-template-columns:minmax(0,1fr)}}
+.hero h2{font-size:1.5rem;letter-spacing:-.01em}
+.facts{display:flex;flex-direction:column;gap:0;border-left:1px solid var(--line);padding-left:20px}
+@media(max-width:760px){.facts{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:16px}}
+.fact{padding-block:10px;border-bottom:1px solid var(--line)}
+.fact:last-child{border-bottom:0}
+.fact b{font-size:1.7rem;font-weight:650;display:block;letter-spacing:-.01em}
+.fact span{color:var(--ink2);font-size:.88rem}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:.84rem;color:var(--ink2)}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-right:6px;vertical-align:-1px}
+.legend i.ln{height:3px;border-radius:2px;width:16px;vertical-align:3px}
+svg.chart{width:100%;height:auto;display:block;overflow:visible}
+svg text{font-family:var(--sans);fill:var(--muted);font-size:11px}
+svg text.t2{fill:var(--ink2)}
+.ctitle{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap}
+.btn{background:none;border:1px solid var(--line);color:var(--ink2);font:inherit;font-size:.8rem;padding:4px 10px;border-radius:6px;cursor:pointer}
+.btn:hover{background:var(--hover);color:var(--ink)}
+table{border-collapse:collapse;width:100%;font-size:.88rem}
+th{color:var(--ink2);font-weight:600;text-align:left;font-size:.78rem;padding:6px 10px 6px 0;border-bottom:1px solid var(--axis);white-space:nowrap}
+td{padding:8px 10px 8px 0;border-bottom:1px solid var(--line);vertical-align:middle}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+.scroll{overflow-x:auto}
+.mono{font-family:var(--mono);font-size:.82rem}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:650;padding:3px 9px 3px 7px;border:1px solid var(--line);border-radius:999px;color:var(--ink)}
+.pill svg{width:12px;height:12px}
+.bar{height:10px;border-radius:2px;background:var(--s1);min-width:2px}
+.bar.o{background:var(--s2)}
+.bars{display:flex;flex-direction:column;gap:3px;min-width:120px}
+.bar-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center}
+.bar-row span{font-size:.78rem;color:var(--ink2);font-variant-numeric:tabular-nums}
+.tag{font-size:.68rem;border:1px solid var(--axis);border-radius:4px;padding:0 5px;color:var(--ink2);margin-left:6px;white-space:nowrap}
+.note{font-size:.85rem;color:var(--ink2);max-width:75ch}
+.callout{border-left:3px solid var(--s2);padding:4px 0 4px 14px;max-width:75ch}
+ul.clean{margin:0;padding-left:1.1em;display:flex;flex-direction:column;gap:6px}
+.heat td{padding:0;border:0}
+.heat th{padding:4px 6px;text-align:center}
+.heat td.c{height:30px;min-width:46px;text-align:center;font-size:.74rem;font-variant-numeric:tabular-nums;border:2px solid var(--surface)}
+.heat td.rl{padding-right:10px;white-space:nowrap;font-size:.8rem}
+.finding{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px}
+.finding .k{font-weight:650;white-space:nowrap}
+@media(max-width:760px){.finding{grid-template-columns:minmax(0,1fr)}}
+#tip{position:fixed;z-index:20;pointer-events:none;background:var(--surface);color:var(--ink);border:1px solid var(--axis);border-radius:8px;padding:8px 10px;font-size:.8rem;box-shadow:0 4px 18px rgba(0,0,0,.16);max-width:260px;display:none}
+#tip b{display:block;margin-bottom:3px}
+#tip div{display:flex;justify-content:space-between;gap:14px;font-variant-numeric:tabular-nums}
+#tip i{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px}
+.tl{position:relative;height:150px;margin-top:6px}
+.tl .m{position:absolute;top:0;bottom:22px;border-left:1px solid var(--grid);font-size:.68rem;color:var(--muted);padding-left:3px}
+.tl .w{position:absolute;height:16px;border-radius:3px;font-size:.66rem;line-height:16px;padding-inline:5px;white-space:nowrap;overflow:hidden;color:var(--ink)}
+.tl .tr{background:var(--band);border:1px solid var(--s1)}
+.tl .lb{background:rgba(235,104,52,.18);border:1px solid var(--s2)}
+.flow{display:flex;align-items:center;gap:10px;overflow-x:auto;padding-bottom:4px}
+.fc{display:flex;flex-direction:column;gap:8px;flex:0 0 auto;width:190px}
+.fb{border:1px solid var(--line);border-radius:8px;padding:9px 11px;display:flex;flex-direction:column;gap:2px;background:var(--bg)}
+.fb span{font-size:.78rem;color:var(--ink2)}
+.fa{color:var(--muted);font-size:1.2rem;flex:0 0 auto}
+@media (prefers-reduced-motion:no-preference){.bar{transition:width .3s}}
+</style>
+
+<div class="wrap">
+<header class="top">
+  <span class="eyebrow">Algothon'26 · ALG-DATA-01 · The Mystery Dataset</span>
+  <h1>Online Retail Investigation</h1>
+  <p class="sub" id="lede"></p>
+</header>
+</div>
+<nav><div class="row" role="tablist" id="tabs"></div></nav>
+<div class="wrap" id="app"></div>
+<div id="tip" role="status"></div>
+
+<script>
+const R = __DATA__;
+const $ = (s, el = document) => el.querySelector(s);
+const NS = 'http://www.w3.org/2000/svg';
+const gbp = n => (n < 0 ? '-' : '') + '£' + Math.abs(Math.round(n)).toLocaleString('en-GB');
+const gbpk = n => Math.abs(n) >= 1e6 ? '£' + (n / 1e6).toFixed(2) + 'M' : Math.abs(n) >= 1e4 ? '£' + Math.round(n / 1e3) + 'k' : Math.abs(n) >= 1e3 ? '£' + (n / 1e3).toFixed(1) + 'k' : '£' + Math.round(n);
+const pc = (x, d = 0) => (x * 100).toFixed(d) + '%';
+const num = n => Math.round(n).toLocaleString('en-GB');
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const mlabel = s => MON[+s.slice(5) - 1];
+const H = id => R.hypotheses.find(h => h.id === id).evidence;
+const el = (tag, attrs = {}, parent) => { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; };
+const html = (s) => { const t = document.createElement('template'); t.innerHTML = s.trim(); return t.content.firstChild; };
+
+/* ---------- tooltip ---------- */
+const tip = $('#tip');
+function showTip(content, ev) {
+  tip.innerHTML = content; tip.style.display = 'block';
+  const r = tip.getBoundingClientRect(); let x = ev.clientX + 14, y = ev.clientY + 14;
+  if (x + r.width > innerWidth - 8) x = ev.clientX - r.width - 14;
+  if (y + r.height > innerHeight - 8) y = ev.clientY - r.height - 14;
+  tip.style.left = Math.max(8, x) + 'px'; tip.style.top = Math.max(8, y) + 'px';
+}
+const hideTip = () => { tip.style.display = 'none'; };
+const row = (c, a, b) => `<div><span>${c ? `<i style="background:${c}"></i>` : ''}${a}</span><span>${b}</span></div>`;
+
+/* ---------- charts ---------- */
+const niceScale = v => { const p = Math.pow(10, Math.floor(Math.log10(v)) - 1);
+  for (const q of [1, 2, 2.5, 5, 10, 20, 25, 50, 100]) { const s = q * p, n = Math.ceil(v / s); if (n <= 5) return { ymax: n * s, ticks: n }; } return { ymax: v, ticks: 4 }; };
+
+function frame(host, W, Hh, m) {
+  host.innerHTML = '';
+  const svg = el('svg', { viewBox: `0 0 ${W} ${Hh}`, class: 'chart', role: 'img' }, host);
+  return { svg, iw: W - m.l - m.r, ih: Hh - m.t - m.b, ...m };
+}
+function yAxis(svg, f, ymin, ymax, ticks, fmt) {
+  const ys = v => f.t + f.ih - (v - ymin) / (ymax - ymin) * f.ih;
+  for (let i = 0; i <= ticks; i++) {
+    const v = ymin + (ymax - ymin) * i / ticks, y = ys(v);
+    el('line', { x1: f.l, x2: f.l + f.iw, y1: y, y2: y, stroke: i ? 'var(--grid)' : 'var(--axis)', 'stroke-width': 1 }, svg);
+    const t = el('text', { x: f.l - 8, y: y + 3.5, 'text-anchor': 'end' }, svg); t.textContent = fmt(v);
+  }
+  return ys;
+}
+
+/* column chart, stacked or single series, optional highlight band */
+function columns(host, o) {
+  const W = o.W || 720, Hh = o.h || 290, f = frame(host, W, Hh, { l: 46, r: 8, t: 12, b: 34 }), n = o.labels.length;
+  const totals = o.labels.map((_, i) => o.stacked ? o.series.reduce((a, s) => a + s.values[i], 0) : Math.max(...o.series.map(s => s.values[i])));
+  const sc0 = niceScale(Math.max(...totals) * 1.02), ymax = sc0.ymax, ys = yAxis(f.svg, f, 0, ymax, sc0.ticks, o.yfmt);
+  const step = f.iw / n, bw = Math.min(40, step * .62), xs = i => f.l + step * i + step / 2;
+  if (o.band) { el('rect', { x: f.l + step * o.band[0], width: step * (o.band[1] - o.band[0] + 1), y: f.t, height: f.ih, fill: 'var(--band)' }, f.svg);
+    const bt = el('text', { x: f.l + step * (o.band[0] + (o.band[1] - o.band[0] + 1) / 2), y: f.t + 11, 'text-anchor': 'middle', class: 't2' }, f.svg); bt.textContent = o.bandLabel; }
+  const hov = el('rect', { y: f.t, height: f.ih, width: step, fill: 'var(--hover)', opacity: 0 }, f.svg);
+  o.labels.forEach((lb, i) => {
+    let base = 0;
+    o.series.forEach((s, k) => {
+      const v = s.values[i]; if (!v) return; const h = v / ymax * f.ih;
+      const x = o.stacked ? xs(i) - bw / 2 : xs(i) - bw / 2 + k * bw / o.series.length, w = o.stacked ? bw : bw / o.series.length;
+      const y = f.t + f.ih - (o.stacked ? base : 0) - h;
+      el('rect', { x, y, width: w, height: Math.max(h, 0), fill: s.color, stroke: 'var(--surface)', 'stroke-width': o.stacked ? 2 : 0, rx: 2, opacity: o.dim && o.dim.includes(i) ? .55 : 1 }, f.svg);
+      base += h;
+    });
+    const t = el('text', { x: xs(i), y: Hh - 16, 'text-anchor': 'middle' }, f.svg); t.textContent = lb;
+    if (o.years && o.years[i]) { const y = el('text', { x: xs(i), y: Hh - 3, 'text-anchor': 'middle', class: 't2' }, f.svg); y.textContent = o.years[i]; }
+    const hit = el('rect', { x: f.l + step * i, y: f.t, width: step, height: f.ih + 30, fill: 'transparent' }, f.svg);
+    hit.addEventListener('pointermove', ev => { hov.setAttribute('x', f.l + step * i); hov.setAttribute('opacity', 1); showTip(o.tip(i), ev); });
+    hit.addEventListener('pointerleave', () => { hov.setAttribute('opacity', 0); hideTip(); });
+  });
+  f.svg.setAttribute('aria-label', o.aria);
+}
+
+/* line chart over categories */
+function lines(host, o) {
+  const W = o.W || 720, Hh = o.h || 230, f = frame(host, W, Hh, { l: 46, r: 12, t: 12, b: 34 }), n = o.labels.length;
+  const ymax = o.ymax, ys = yAxis(f.svg, f, 0, ymax, 3, o.yfmt), step = f.iw / n, xs = i => f.l + step * i + step / 2;
+  if (o.band) el('rect', { x: f.l + step * o.band[0], width: step * (o.band[1] - o.band[0] + 1), y: f.t, height: f.ih, fill: 'var(--band)' }, f.svg);
+  o.series.forEach(s => {
+    el('path', { d: s.values.map((v, i) => (i ? 'L' : 'M') + xs(i) + ' ' + ys(v)).join(' '), fill: 'none', stroke: s.color, 'stroke-width': 2, 'stroke-linejoin': 'round', 'stroke-linecap': 'round' }, f.svg);
+  });
+  const cross = el('line', { y1: f.t, y2: f.t + f.ih, stroke: 'var(--axis)', 'stroke-width': 1, opacity: 0 }, f.svg);
+  const dots = o.series.map(s => el('circle', { r: 4.5, fill: s.color, stroke: 'var(--surface)', 'stroke-width': 2, opacity: 0 }, f.svg));
+  o.labels.forEach((lb, i) => {
+    const t = el('text', { x: xs(i), y: Hh - 16, 'text-anchor': 'middle' }, f.svg); t.textContent = lb;
+    if (o.years && o.years[i]) { const y = el('text', { x: xs(i), y: Hh - 3, 'text-anchor': 'middle', class: 't2' }, f.svg); y.textContent = o.years[i]; }
+    const hit = el('rect', { x: f.l + step * i, y: f.t, width: step, height: f.ih + 30, fill: 'transparent' }, f.svg);
+    hit.addEventListener('pointermove', ev => { cross.setAttribute('x1', xs(i)); cross.setAttribute('x2', xs(i)); cross.setAttribute('opacity', 1);
+      dots.forEach((d, k) => { d.setAttribute('cx', xs(i)); d.setAttribute('cy', ys(o.series[k].values[i])); d.setAttribute('opacity', 1); }); showTip(o.tip(i), ev); });
+    hit.addEventListener('pointerleave', () => { cross.setAttribute('opacity', 0); dots.forEach(d => d.setAttribute('opacity', 0)); hideTip(); });
+  });
+  f.svg.setAttribute('aria-label', o.aria);
+}
+
+/* x-y chart on 0..1 axes (ROC, Lorenz) */
+function xy(host, o) {
+  const W = 480, Hh = 400, f = frame(host, W, Hh, { l: 46, r: 12, t: 12, b: 44 });
+  const ys = yAxis(f.svg, f, 0, 1, 4, v => pc(v)), xs = v => f.l + v * f.iw;
+  for (let i = 0; i <= 4; i++) { const t = el('text', { x: xs(i / 4), y: f.t + f.ih + 16, 'text-anchor': 'middle' }, f.svg); t.textContent = pc(i / 4); }
+  const xt = el('text', { x: f.l + f.iw / 2, y: Hh - 4, 'text-anchor': 'middle', class: 't2' }, f.svg); xt.textContent = o.xlabel;
+  const yt = el('text', { x: 0, y: 0, transform: `translate(11 ${f.t + f.ih / 2}) rotate(-90)`, 'text-anchor': 'middle', class: 't2' }, f.svg); yt.textContent = o.ylabel;
+  el('line', { x1: xs(0), y1: ys(0), x2: xs(1), y2: ys(1), stroke: 'var(--muted)', 'stroke-dasharray': '4 4', 'stroke-width': 1 }, f.svg);
+  o.series.forEach(s => el('path', { d: s.pts.map((p, i) => (i ? 'L' : 'M') + xs(p[0]) + ' ' + ys(p[1])).join(' '), fill: 'none', stroke: s.color, 'stroke-width': 2, 'stroke-dasharray': s.dash || '', 'stroke-linejoin': 'round' }, f.svg));
+  const cross = el('line', { y1: f.t, y2: f.t + f.ih, stroke: 'var(--axis)', opacity: 0 }, f.svg);
+  const hit = el('rect', { x: f.l, y: f.t, width: f.iw, height: f.ih, fill: 'transparent' }, f.svg);
+  const at = (pts, x) => { let b = pts[0]; for (const p of pts) if (Math.abs(p[0] - x) < Math.abs(b[0] - x)) b = p; return b; };
+  hit.addEventListener('pointermove', ev => {
+    const r = f.svg.getBoundingClientRect(), x = Math.min(1, Math.max(0, ((ev.clientX - r.left) / r.width * W - f.l) / f.iw));
+    cross.setAttribute('x1', xs(x)); cross.setAttribute('x2', xs(x)); cross.setAttribute('opacity', 1);
+    showTip(o.tip(x, o.series.map(s => ({ s, p: at(s.pts, x) }))), ev);
+  });
+  hit.addEventListener('pointerleave', () => { cross.setAttribute('opacity', 0); hideTip(); });
+  f.svg.setAttribute('aria-label', o.aria);
+}
+
+/* ---------- derived data ---------- */
+const M = R.months, Y = M.map((m, i) => (i === 0 || m.endsWith('-01')) ? m.slice(0, 4) : '');
+const LAB = M.map((m, i) => mlabel(m) + (i === M.length - 1 ? '*' : ''));
+const iSep = M.indexOf('2011-09'), iNov = M.indexOf('2011-11'), iDec = M.length - 1;
+const st = R.state_revenue, sc = R.state_customers;
+const tot = i => st.new[i] + st.continuing[i] + st.reactivated[i];
+const e1 = H('H1'), e2 = H('H2'), e3 = H('H3');
+const verdict = v => v === 'Supported'
+  ? `<span class="pill"><svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="6" fill="var(--good)"/><path d="M3.2 6.2l2 2 3.6-4" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg>${v}</span>`
+  : `<span class="pill"><svg viewBox="0 0 12 12"><circle cx="6" cy="6" r="6" fill="var(--crit)"/><path d="M3.8 3.8l4.4 4.4M8.2 3.8L3.8 8.2" stroke="#fff" stroke-width="1.6" fill="none" stroke-linecap="round"/></svg>${v}</span>`;
+const XM = /CHRISTMAS|XMAS|SANTA|ADVENT|REINDEER|SNOW|TINSEL|STOCKING|BAUBLE|NOEL|HOLLY|GINGERBREAD|PAPER CHAIN/i;
+const lede = `A UK gift-ware retailer's transaction log, ${R.date_range[0].split('-').reverse().join('/')} to ${R.date_range[1].split('-').reverse().join('/')}. ${num(R.clean_rows)} clean lines, ${num(R.n_invoices)} orders and ${num(R.n_customers)} identified customers after cleaning. Every figure on this page is computed by pipeline.py.`;
+$('#lede').textContent = lede;
+
+/* ---------- tab content ---------- */
+const TABS = [['overview', 'Overview'], ['cleaning', 'Data cleaning'], ['customers', 'Customers'], ['hypotheses', 'Hypotheses'], ['model', 'Churn model'], ['method', 'Method & limits']];
+const app = $('#app'), secs = {};
+TABS.forEach(([id]) => { const s = document.createElement('section'); s.className = 'tab'; s.id = 'tab-' + id; s.setAttribute('role', 'tabpanel'); s.hidden = true; app.appendChild(s); secs[id] = s; });
+
+function overview() {
+  const s = secs.overview;
+  s.innerHTML = `
+  <div class="card hero">
+    <div class="stack">
+      <span class="eyebrow">The finding</span>
+      <h2>Q4 growth is more orders from a wide base of customers. It is not bigger baskets and it is not mainly Christmas stock.</h2>
+      <p class="sub">Average monthly revenue from identified customers rose ${pc(e1.rev_growth)} from June-August to September-November. About ${pc(e1.share_of_growth_from_order_count)} of that growth comes from the number of orders. Order size barely moved. Items matching Christmas keywords explain only ${pc(e2.share_from_christmas_keywords)} of the lift, and ${num(e2.products_growing)} different products grew.</p>
+    </div>
+    <div class="facts">
+      <div class="fact"><b>+${pc(e1.order_count_growth)}</b><span>orders per month, Sep-Nov vs Jun-Aug</span></div>
+      <div class="fact"><b>+${pc(e1.mean_order_q4 / e1.mean_order_summer - 1)}</b><span>average order value (median ${gbp(e1.median_order_summer)} to ${gbp(e1.median_order_q4)})</span></div>
+      <div class="fact"><b>${pc(e2.share_from_christmas_keywords)}</b><span>of the product-level lift is Christmas-keyword stock</span></div>
+    </div>
+  </div>
+
+  <div class="card stack">
+    <div class="ctitle"><h3>Monthly revenue from identified customers, by customer type</h3><button class="btn" id="tblbtn" aria-expanded="false">Show table</button></div>
+    <div class="legend"><span><i style="background:var(--s1)"></i>Continuing (ordered in the prior 2 months)</span><span><i style="background:var(--s2)"></i>Reactivated (returned after a gap)</span><span><i style="background:var(--s3)"></i>New (first order)</span></div>
+    <div id="c-monthly"></div>
+    <div id="tbl-monthly" class="scroll" hidden></div>
+    <p class="note">* December 2011 covers 1-9 December only, so its drop is a data cut-off. Guest orders without a customer ID (${pc(R.guest_share_rev)} of revenue) are left out here.</p>
+  </div>
+
+  <div class="grid2">
+    <div class="card stack"><h3>Orders per month</h3><div id="c-orders"></div></div>
+    <div class="card stack"><h3>Average order value</h3><div id="c-aov"></div></div>
+  </div>
+
+  <div class="card stack">
+    <h3>What else the data shows</h3>
+    <div class="finding">
+      <span class="k">Cancelled orders distort rankings</span><span>${num(R.reversed_lines)} lines (${gbp(R.reversed_value)}) were orders placed and then fully reversed. Raw data ranks customer ${R.reversed_top[0].customer} as #${R.naive.rank[R.reversed_top[0].customer]} by spend because of a ${gbp(R.reversed_top[0].value)} order cancelled the same day.</span>
+      <span class="k">Revenue is concentrated</span><span>The top 10% of customers bring ${pc(R.top_share['10'])} of revenue (Gini ${R.gini.toFixed(2)}). ${pc(R.one_time_share)} of customers ordered once.</span>
+      <span class="k">Churn is predictable, modestly</span><span>A logistic model reaches AUC ${R.model.results['Logistic regression'].roc_auc.toFixed(2)} on a later, unseen period against ${R.model.results['Baseline: recency only'].roc_auc.toFixed(2)} for a recency-only rule.</span>
+      <span class="k">Country comparisons are thin</span><span>The UK is ${pc(R.uk_share)} of revenue. Netherlands and EIRE rank high on ${R.countries[1].customers} and ${R.countries[2].customers} customers, so they describe a few accounts.</span>
+    </div>
+  </div>`;
+  columns($('#c-monthly'), { labels: LAB, years: Y, stacked: true, band: [iSep, iNov], bandLabel: 'Sep-Nov', dim: [iDec],
+    series: [{ name: 'Continuing', color: 'var(--s1)', values: st.continuing }, { name: 'Reactivated', color: 'var(--s2)', values: st.reactivated }, { name: 'New', color: 'var(--s3)', values: st.new }],
+    yfmt: v => gbpk(v), aria: 'Stacked columns of monthly revenue by customer type, rising sharply from September to November 2011.',
+    tip: i => `<b>${mlabel(M[i])} ${M[i].slice(0, 4)}${i === iDec ? ' (1-9 Dec)' : ''}</b>${row('var(--s1)', 'Continuing', gbp(st.continuing[i]))}${row('var(--s2)', 'Reactivated', gbp(st.reactivated[i]))}${row('var(--s3)', 'New', gbp(st.new[i]))}${row('', 'Customers', num(R.monthly.customers[i]))}` });
+  columns($('#c-orders'), { labels: LAB, years: Y, band: [iSep, iNov], bandLabel: 'Sep-Nov', dim: [iDec], W: 420, h: 250, series: [{ name: 'Orders', color: 'var(--s1)', values: R.monthly.invoices }],
+    yfmt: v => num(v), aria: 'Columns of orders per month, highest in November 2011.',
+    tip: i => `<b>${mlabel(M[i])} ${M[i].slice(0, 4)}</b>${row('var(--s1)', 'Orders', num(R.monthly.invoices[i]))}` });
+  lines($('#c-aov'), { labels: LAB, years: Y, band: [iSep, iNov], ymax: 600, W: 420, h: 250, yfmt: v => '£' + v, series: [{ name: 'AOV', color: 'var(--s2)', values: R.monthly.aov }],
+    aria: 'Line of average order value by month, staying between 400 and 540 pounds.',
+    tip: i => `<b>${mlabel(M[i])} ${M[i].slice(0, 4)}</b>${row('var(--s2)', 'Average order', gbp(R.monthly.aov[i]))}${row('', 'Customers', num(R.monthly.customers[i]))}` });
+  const tb = $('#tbl-monthly');
+  tb.innerHTML = `<table><thead><tr><th>Month</th><th class="n">Continuing</th><th class="n">Reactivated</th><th class="n">New</th><th class="n">Total</th><th class="n">Orders</th><th class="n">Avg order</th></tr></thead><tbody>${M.map((m, i) => `<tr><td>${mlabel(m)} ${m.slice(0, 4)}${i === iDec ? '*' : ''}</td><td class="n">${gbp(st.continuing[i])}</td><td class="n">${gbp(st.reactivated[i])}</td><td class="n">${gbp(st.new[i])}</td><td class="n">${gbp(tot(i))}</td><td class="n">${num(R.monthly.invoices[i])}</td><td class="n">${gbp(R.monthly.aov[i])}</td></tr>`).join('')}</tbody></table>`;
+  $('#tblbtn').onclick = e => { tb.hidden = !tb.hidden; e.target.textContent = tb.hidden ? 'Show table' : 'Hide table'; e.target.setAttribute('aria-expanded', String(!tb.hidden)); };
+}
+
+function cleaning() {
+  const L = R.cleaning_log, raw = L[0].rows;
+  secs.cleaning.innerHTML = `
+  <div class="stack"><h2>Every cleaning rule, with what it removed</h2><p class="sub">Rows are removed in this order. Nothing is dropped silently: each step shows its row count and the money it touches, so you can disagree with a rule and rerun without it.</p></div>
+  <div class="card scroll"><table><thead><tr><th>Step</th><th class="n">Rows removed</th><th class="n">Rows left</th><th class="n">Revenue touched</th></tr></thead><tbody>
+  ${L.map(r => `<tr><td>${r.step}</td><td class="n">${r.removed ? num(r.removed) : '-'}</td><td class="n">${num(r.rows)}</td><td class="n">${r.value ? gbp(r.value) : '-'}</td></tr>`).join('')}
+  </tbody></table></div>
+  <div class="card stack">
+    <h3>Orders that were placed and then cancelled</h3>
+    <p class="note">A cancellation row (invoice number starting with C) is paired with the earlier order of the same product, quantity and customer. Both sides are removed, because that order never happened. ${num(R.reversed_lines)} pairs were found, worth ${gbp(R.reversed_value)}. The largest:</p>
+    <div class="scroll"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Date</th><th>Item</th><th class="n">Value</th></tr></thead><tbody>
+    ${R.reversed_top.map(r => `<tr><td class="mono">${r.invoice}</td><td class="mono">${r.customer}</td><td>${r.date}</td><td>${r.item}</td><td class="n">${gbp(r.value)}</td></tr>`).join('')}</tbody></table></div>
+    <div class="callout"><b>Why it matters.</b> Without this step, customer ${R.reversed_top[0].customer} ranks #${R.naive.rank[R.reversed_top[0].customer]} and customer ${R.reversed_top[1].customer} ranks #${R.naive.rank[R.reversed_top[1].customer]} by gross spend, on orders that were reversed. The top-1% revenue share reads ${pc(R.naive.top1pct_share, 1)} before cleaning and ${pc(R.top_share['1'], 1)} after.</div>
+  </div>
+  <div class="grid2">
+    <div class="card stack"><h3>Rows that are not products</h3>
+      <p class="note">Codes that are not five digits plus an optional letter suffix. They are fees and services, not sales of goods.</p>
+      <table><thead><tr><th>Code</th><th class="n">Rows</th><th class="n">Net value</th></tr></thead><tbody>${R.non_product_codes.slice(0, 4).map(r => `<tr><td class="mono">${r.code}</td><td class="n">${num(r.rows)}</td><td class="n">${gbp(r.value)}</td></tr>`).join('')}</tbody></table>
+      <p class="note">DOT (dotcom postage) is the largest "product" by revenue until it is removed.</p></div>
+    <div class="card stack"><h3>What remains after cleaning</h3>
+      <ul class="clean"><li>${gbp(R.returns_total)} of partial returns from ${num(R.returns_customers)} customers. The median customer returned ${pc(R.returns_median_ratio, 1)} of what they bought, and the top 10 returners hold ${pc(R.returns_top10_share)} of the value.</li>
+      <li>${num(R.price_outlier_lines)} lines priced more than 10x above or below the product's own median price. These are kept and listed in the repository output.</li>
+      <li>${R.n_high_value_invoices} orders flagged as unusually large (robust z above 3.5). Together they are ${pc(R.high_value_invoice_share)} of revenue, so they are real wholesale buying and stay in.</li></ul></div>
+  </div>
+  <div class="card stack"><h3>Largest legitimate orders</h3>
+    <div class="scroll"><table><thead><tr><th>Invoice</th><th>Customer</th><th>Date</th><th class="n">Lines</th><th class="n">Value</th><th class="n">Robust z</th></tr></thead><tbody>
+    ${R.largest_invoices.map(r => `<tr><td class="mono">${r.invoice}</td><td class="mono">${r.customer}</td><td>${r.date}</td><td class="n">${r.lines}</td><td class="n">${gbp(r.value)}</td><td class="n">${r.z.toFixed(1)}</td></tr>`).join('')}</tbody></table></div></div>`;
+}
+
+function customers() {
+  const seg = R.rfm, mx = Math.max(...seg.map(s => Math.max(s.rev_share, s.cust_share)));
+  const C = R.cohort;
+  const stepIdx = v => v == null ? -1 : Math.min(6, Math.floor(v / 0.45 * 7));
+  secs.customers.innerHTML = `
+  <div class="stack"><h2>Who the customers are</h2><p class="sub">Spend is concentrated in a repeat-buying core. Most one-time buyers never come back.</p></div>
+  <div class="grid2">
+    <div class="card stack"><div class="ctitle"><h3>Revenue concentration</h3></div><div id="c-lorenz"></div>
+      <p class="note">Customers sorted from lowest to highest spend. The bottom 80% of customers bring ${pc(1 - R.top_share['20'])} of revenue. Gini ${R.gini.toFixed(2)}.</p></div>
+    <div class="card stack"><h3>RFM segments</h3>
+      <div class="legend"><span><i style="background:var(--s1)"></i>Share of customers</span><span><i style="background:var(--s2)"></i>Share of revenue</span></div>
+      <div class="scroll"><table><thead><tr><th>Segment</th><th>Share</th><th class="n">Customers</th><th class="n">Median days since order</th></tr></thead><tbody>
+      ${seg.map(s => `<tr><td>${s.segment}</td><td><div class="bars"><div class="bar-row"><div class="bar" style="width:${s.cust_share / mx * 100}%"></div><span>${pc(s.cust_share)}</span></div><div class="bar-row"><div class="bar o" style="width:${s.rev_share / mx * 100}%"></div><span>${pc(s.rev_share)}</span></div></div></td><td class="n">${num(s.customers)}</td><td class="n">${num(s.med_recency)}</td></tr>`).join('')}</tbody></table></div></div>
+  </div>
+  <div class="card stack"><h3>Cohort retention by first-order month</h3>
+    <p class="note">Share of each cohort that ordered again, by months since its first order. The December 2010 cohort is not a true new-customer cohort. The data starts that month, so it also holds every established customer, and that is why it retains better.</p>
+    <div class="scroll"><table class="heat"><thead><tr><th></th><th>Size</th>${Array.from({ length: 12 }, (_, i) => `<th>M${i + 1}</th>`).join('')}</tr></thead><tbody>
+    ${C.cohorts.map((c, i) => `<tr><td class="rl">${mlabel(c)} ${c.slice(2, 4)}</td><td class="rl n">${num(C.size[i])}</td>${Array.from({ length: 12 }, (_, a) => { const v = C.ret[i][a + 1]; if (v == null) return '<td class="c"></td>'; const k = stepIdx(v); return `<td class="c" style="background:var(--h${k});color:var(--i${k})" data-t="${mlabel(c)} ${c.slice(0, 4)} cohort, month ${a + 1}: ${pc(v)} of ${num(C.size[i])} customers">${(v * 100).toFixed(0)}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div></div>
+  <div class="card stack"><h3>Top countries</h3>
+    <div class="scroll"><table><thead><tr><th>Country</th><th class="n">Revenue</th><th class="n">Customers</th><th class="n">Orders</th><th class="n">Avg order</th></tr></thead><tbody>
+    ${R.countries.map(c => `<tr><td>${c.country}</td><td class="n">${gbp(c.revenue)}</td><td class="n">${num(c.customers)}${c.customers < 10 ? '<span class="tag">few accounts</span>' : ''}</td><td class="n">${num(c.invoices)}</td><td class="n">${gbp(c.aov)}</td></tr>`).join('')}</tbody></table></div></div>`;
+  xy($('#c-lorenz'), { xlabel: 'Cumulative share of customers (lowest spend first)', ylabel: 'Cumulative share of revenue', aria: 'Lorenz curve of customer revenue showing heavy concentration among the top customers.',
+    series: [{ name: 'Customers', color: 'var(--s1)', pts: R.lorenz }],
+    tip: (x, a) => `<b>Bottom ${pc(x)} of customers</b>${row('var(--s1)', 'Revenue share', pc(a[0].p[1], 1))}` });
+  secs.customers.querySelectorAll('td.c[data-t]').forEach(td => { td.addEventListener('pointermove', ev => showTip(td.dataset.t, ev)); td.addEventListener('pointerleave', hideTip); });
+}
+
+const sumR = (k, a, b) => st[k].slice(a, b + 1).reduce((x, y) => x + y, 0);
+const iJun = M.indexOf('2011-06'), iAug = M.indexOf('2011-08');
+const XD = {}; ['continuing', 'reactivated', 'new'].forEach(k => XD[k] = (sumR(k, iSep, iNov) - sumR(k, iJun, iAug)) / 3);
+const XS = {}; Object.keys(XD).forEach(k => XS[k] = XD[k] / (XD.continuing + XD.reactivated + XD.new));
+function hypotheses() {
+  const mv = e2.top_movers, mx = Math.max(...mv.map(m => m.uplift));
+  secs.hypotheses.innerHTML = `
+  <div class="stack"><h2>Three hypotheses, tested</h2><p class="sub">Each was written down before the test was run. One of them failed, and that result changed the headline.</p></div>
+  <div class="card stack">
+    <div class="ctitle"><h3>H1. ${H_('H1')}</h3>${verdict(R.hypotheses[0].verdict)}</div>
+    <p>Revenue per month rose ${pc(e1.rev_growth)}. Orders per month rose ${pc(e1.order_count_growth)}. Order count explains ${pc(e1.share_of_growth_from_order_count)} of the growth on a log scale.</p>
+    <ul class="clean"><li>Median order: ${gbp(e1.median_order_summer)} in summer, ${gbp(e1.median_order_q4)} in Sep-Nov. Mean: ${gbp(e1.mean_order_summer)} to ${gbp(e1.mean_order_q4)}.</li>
+    <li>Mann-Whitney U on ${num(e1.n_orders[0])} summer and ${num(e1.n_orders[1])} autumn orders gives p = ${e1.mannwhitney_p.toExponential(1)}. The 95% bootstrap interval for the median difference is ${gbp(e1.median_diff_ci[0])} to ${gbp(e1.median_diff_ci[1])}.</li>
+    <li>With this many orders even a small shift is statistically detectable. The size of the shift, about 2% on the median, is what matters, and it is small next to the 58% rise in order count.</li></ul>
+  </div>
+  <div class="card stack">
+    <div class="ctitle"><h3>H2. ${H_('H2')}</h3>${verdict(R.hypotheses[1].verdict)}</div>
+    <p>Christmas-keyword items go from ${pc(e2.christmas_share_of_revenue_summer, 1)} of revenue in summer to ${pc(e2.christmas_share_of_revenue_q4, 1)} in Sep-Nov. That is a real rise, but those items explain ${pc(e2.share_from_christmas_keywords)} of the monthly lift of ${gbp(e2.uplift_per_month)}.</p>
+    <ul class="clean"><li>${num(e2.products_growing)} products grew and ${num(e2.products_shrinking)} shrank. The 50 biggest gainers hold ${pc(e2.top50_share_of_growth)} of the growth and the top 200 hold ${pc(e2.top200_share_of_growth)}.</li>
+    <li>The top movers mix Christmas lines with winter and gift items such as hot water bottles, hand warmers and night lights.</li></ul>
+    <div class="stack" style="gap:6px;margin-top:4px"><span class="eyebrow">Largest monthly gains, Sep-Nov vs Jun-Aug</span>
+    ${mv.map(m => `<div class="bar-row" style="grid-template-columns:minmax(0,210px) minmax(0,1fr) auto"><span style="color:var(--ink)">${m.item}${XM.test(m.item) ? '<span class="tag">Christmas</span>' : ''}</span><div class="bar" style="width:${m.uplift / mx * 100}%"></div><span>${gbp(m.uplift)}</span></div>`).join('')}</div>
+  </div>
+  <div class="card stack">
+    <div class="ctitle"><h3>H3. ${H_('H3')}</h3>${verdict(R.hypotheses[2].verdict)}</div>
+    <p>${num(e3.returning_in_q4)} of the ${num(e3.summer_customers)} customers who ordered in summer ordered again in Sep-Nov (${pc(e3.returning_share)}). Their spend rose ${pc(e3.same_customer_growth)}. Customers who skipped summer account for ${pc(e3.q4_rev_share_from_customers_absent_in_summer)} of Sep-Nov revenue.</p>
+    <p class="note">Split of the extra monthly revenue by customer type: continuing ${pc(XS.continuing)}, reactivated ${pc(XS.reactivated)}, new ${pc(XS.new)}. My first guess was that reactivated customers drove the lift. The split shows they grow fastest in percentage terms but from a small base, so continuing customers supply most of the extra revenue.</p>
+  </div>`;
+}
+function H_(id) { return R.hypotheses.find(h => h.id === id).claim; }
+
+function model() {
+  const m = R.model, res = m.results, names = Object.keys(res), best = m.best;
+  const col = { 'Baseline: recency only': 'var(--muted)', 'Logistic regression': 'var(--s1)', 'Gradient boosting': 'var(--s2)' };
+  const imp = m.importance.slice(0, 7), mx = Math.max(...imp.map(i => i.drop));
+  const lab = { tenure: 'Days since first order', inv_last_90: 'Orders in last 90 days', recency: 'Days since last order', mean_gap: 'Mean days between orders', n_products: 'Distinct products bought', n_returns: 'Number of returns', frequency: 'Total orders', monetary: 'Total spend', avg_order: 'Average order value', rev_last_90: 'Spend in last 90 days', uk: 'UK customer', return_ratio: 'Returned share of spend', aov_trend: 'Order value trend' };
+  const span = (a, b) => { const t0 = new Date('2010-12-01'), t1 = new Date('2011-12-31'), d = x => (new Date(x) - t0) / (t1 - t0) * 100; return [d(a), d(b) - d(a)]; };
+  const days = (d, n) => new Date(new Date(d).getTime() + n * 864e5).toISOString().slice(0, 10);
+  const trSp = m.train_cutoffs.map((c, i) => { const [l, w] = span(c, days(c, m.horizon_days)); return `<div class="w lb" style="left:${l}%;width:${w}%;top:${24 + i * 20}px">label window ${i + 1}</div>`; }).join('');
+  const [tl, tw] = span(m.test_cutoff, '2011-12-09');
+  secs.model.innerHTML = `
+  <div class="stack"><h2>Which customers stop ordering?</h2>
+  <p class="sub">The question: for a customer we have seen so far, will they place no order in the next ${m.horizon_days} days? Features use only history before a snapshot date. The label looks ${m.horizon_days} days ahead.</p></div>
+  <div class="card stack"><h3>Time-based validation</h3>
+    <p class="note">Models train on four earlier snapshots and are scored on one later snapshot whose label window they never saw. A random split would let a model learn from the future, so none is used. The last training label window ends before the test snapshot (checked by an assertion in the code).</p>
+    <div class="tl">${[['2010-12-01', 'Dec 10'], ['2011-03-01', 'Mar'], ['2011-06-01', 'Jun'], ['2011-09-01', 'Sep'], ['2011-12-01', 'Dec 11']].map(([d, t]) => { const [l] = span(d, d); return `<div class="m" style="left:${l}%">${t}</div>`; }).join('')}
+      ${trSp}<div class="w tr" style="left:${tl}%;width:${tw}%;top:24px">test label window</div>
+      <div class="w" style="left:${span(m.test_cutoff, m.test_cutoff)[0]}%;top:48px;padding:0;color:var(--ink2)">▲ test snapshot ${m.test_cutoff}</div></div>
+    <p class="note">${num(m.train_rows)} training rows from four snapshots, ${num(m.test_rows)} test rows. Churn rate ${pc(m.train_churn_rate)} in training and ${pc(m.test_churn_rate)} in test.</p>
+  </div>
+  <div class="grid2">
+    <div class="card stack"><h3>Held-out results</h3>
+      <div class="scroll"><table><thead><tr><th>Model</th><th class="n">ROC AUC</th><th class="n">PR AUC</th><th class="n">Top-10% lift</th></tr></thead><tbody>
+      ${names.map(n => `<tr><td><span class="legend"><span><i class="ln" style="background:${col[n]}"></i>${n}</span></span></td><td class="n">${res[n].roc_auc.toFixed(3)}<br><span class="note">${res[n].auc_ci[0].toFixed(2)}-${res[n].auc_ci[1].toFixed(2)}</span></td><td class="n">${res[n].pr_auc.toFixed(3)}</td><td class="n">${res[n].top_decile_lift.toFixed(2)}x</td></tr>`).join('')}</tbody></table></div>
+      <p class="note">Intervals are 95% bootstrap over test customers. Both models beat the recency rule by ${res['Logistic regression'].gain_vs_baseline.toFixed(3)} and ${res['Gradient boosting'].gain_vs_baseline.toFixed(3)} AUC, and both gain intervals exclude zero. Logistic and boosting are statistically tied (gap interval ${R.lr_vs_gbm_gap_ci[0].toFixed(3)} to ${R.lr_vs_gbm_gap_ci[1].toFixed(3)}). Top-10% lift is capped near ${(1 / m.test_churn_rate).toFixed(1)}x here because ${pc(m.test_churn_rate)} of customers churn.</p></div>
+    <div class="card stack"><h3>ROC curves</h3>
+      <div class="legend">${names.map(n => `<span><i class="ln" style="background:${col[n]}"></i>${n}</span>`).join('')}</div><div id="c-roc"></div></div>
+  </div>
+  <div class="grid2">
+    <div class="card stack"><h3>What drives the prediction</h3><p class="note">Drop in held-out AUC when one feature is shuffled (${best}).</p>
+      ${imp.map(i => `<div class="bar-row" style="grid-template-columns:minmax(0,170px) minmax(0,1fr) auto"><span style="color:var(--ink)">${lab[i.feature] || i.feature}</span><div class="bar" style="width:${Math.max(i.drop, 0) / mx * 100}%"></div><span>${i.drop.toFixed(3)}</span></div>`).join('')}
+      <p class="note">Customer age and recent activity matter most. Return behaviour adds little.</p></div>
+    <div class="card stack"><h3>Calibration on the test period</h3>
+      <div class="legend"><span><i style="background:var(--s1)"></i>Predicted</span><span><i style="background:var(--s2)"></i>Actual</span></div>
+      ${m.calibration.map((c, i) => `<div class="bars"><span class="note">Risk quintile ${i + 1} (${num(c.n)} customers)</span><div class="bar-row"><div class="bar" style="width:${c.pred * 100}%"></div><span>${pc(c.pred)}</span></div><div class="bar-row"><div class="bar o" style="width:${c.actual * 100}%"></div><span>${pc(c.actual)}</span></div></div>`).join('')}
+      <p class="note">Ranking is useful. The probabilities run too low for safe customers and too high for risky ones, so use the score to rank, not as a literal chance.</p></div>
+  </div>
+  <div class="card stack"><h3>Repeat buyers most worth a call this week</h3>
+    <p class="note">Model refit on all snapshots and scored at ${R.date_range[1]}. The pool is the ${num(R.at_risk_pool)} repeat buyers who ordered in the last 150 days. Value at risk is churn probability times past spend. Total across the pool: ${gbp(R.at_risk_total_value)}. The full list is in at_risk_customers.csv.</p>
+    <div class="scroll"><table><thead><tr><th>Customer</th><th>Segment</th><th class="n">Past spend</th><th class="n">Orders</th><th class="n">Days since last</th><th>Churn risk</th><th class="n">Value at risk</th></tr></thead><tbody>
+    ${R.at_risk.map(a => `<tr><td class="mono">${a.customer}</td><td>${a.segment}</td><td class="n">${gbp(a.monetary)}</td><td class="n">${a.frequency}</td><td class="n">${a.recency}</td><td><div class="bar-row"><div class="bar o" style="width:${a.churn_prob * 100}%"></div><span>${pc(a.churn_prob)}</span></div></td><td class="n">${gbp(a.churn_prob * a.monetary)}</td></tr>`).join('')}</tbody></table></div></div>`;
+  xy($('#c-roc'), { xlabel: 'False positive rate', ylabel: 'True positive rate', aria: 'ROC curves for three churn models; logistic regression and gradient boosting sit above the recency baseline.',
+    series: names.map(n => ({ name: n, color: col[n], dash: n.startsWith('Baseline') ? '5 4' : '', pts: m.roc[n] })),
+    tip: (x, a) => `<b>False positive rate ${pc(x)}</b>${a.map(r => row(col[r.s.name], r.s.name, pc(r.p[1]))).join('')}` });
+}
+
+function method() {
+  secs.method.innerHTML = `
+  <div class="stack"><h2>How it was built, and where it breaks</h2></div>
+  <div class="card stack"><h3>Architecture</h3>
+<div class="flow">
+    <div class="fc"><div class="fb"><b>Online_Retail.xlsx</b><span>541,909 raw rows</span></div></div><div class="fa">→</div>
+    <div class="fc"><div class="fb"><b>Clean</b><span>6 counted rules, writes clean_sales.csv</span></div></div><div class="fa">→</div>
+    <div class="fc"><div class="fb"><b>Explore</b><span>customer types, cohorts, RFM, anomalies</span></div><div class="fb"><b>Test hypotheses</b><span>Mann-Whitney, bootstrap</span></div><div class="fb"><b>Churn model</b><span>snapshot features, time split, logistic and boosting</span></div></div><div class="fa">→</div>
+    <div class="fc"><div class="fb"><b>results.json</b><span>feeds this dashboard</span></div><div class="fb"><b>at_risk_customers.csv</b><span>scored customers</span></div></div>
+  </div></div>
+  <div class="grid2">
+    <div class="card stack"><h3>Decisions that change the numbers</h3><ul class="clean">
+      <li>Matched order and cancellation pairs are removed from sales, not counted as returns. Unmatched cancellations stay as returns.</li>
+      <li>Guest orders stay in revenue totals and leave customer-level analysis, since they have no identity to follow.</li>
+      <li>The model's label is "no order within ${R.model.horizon_days} days", chosen so one snapshot is not dominated by the pre-Christmas rush.</li>
+      <li>Regression and boosting were compared on the held-out snapshot. Their gap is within noise, so the simpler logistic model is reported as the main model.</li></ul></div>
+    <div class="card stack"><h3>Known limitations</h3><ul class="clean">
+      <li>One year of data. Seasonality cannot be learned, so the test period includes the Q4 peak and its base rate differs from training.</li>
+      <li>Exact-quantity matching misses partial cancellations. Those stay in as returns.</li>
+      <li>The Christmas keyword list is a lower bound on seasonal stock.</li>
+      <li>Model selection saw the test snapshot. With three candidates and a tie at the top, the effect is small, but it is not a clean final exam.</li>
+      <li>The at-risk list scores recent repeat buyers only. Customers silent for months are outside the training range.</li>
+      <li>Nothing here is causal. The findings describe this retailer in this year.</li></ul></div>
+  </div>
+  <div class="grid2">
+    <div class="card stack"><h3>Testing and edge cases</h3><ul class="clean">
+      <li>tests.py checks that the cleaning log reconciles to the raw row count, no duplicates or negative quantities remain, and matched reversals net to zero.</li>
+      <li>tests.py checks that no training label window reaches the test snapshot and that all probabilities lie in 0 to 1.</li>
+      <li>Edge cases handled: 25% missing customer IDs, duplicate rows, non-product codes, same-day reversals, a partial final month, single-order customers (gap feature), and customers with zero prior returns.</li></ul></div>
+    <div class="card stack"><h3>Disclosure</h3><ul class="clean">
+      <li>Dataset: the supplied Online_Retail.xlsx (the public UCI Online Retail data). No other data or external APIs.</li>
+      <li>Libraries: pandas, NumPy, SciPy, scikit-learn.</li>
+      <li>AI-assisted: this analysis and dashboard were drafted with Claude. Every figure comes from the pipeline output and can be regenerated with <span class="mono">python pipeline.py</span>.</li></ul></div>
+  </div>`;
+}
+
+overview(); cleaning(); customers(); hypotheses(); model(); method();
+
+/* ---------- tabs ---------- */
+const bar = $('#tabs');
+function open(id) {
+  TABS.forEach(([t]) => { secs[t].hidden = t !== id; $('#tab-btn-' + t).setAttribute('aria-selected', String(t === id)); });
+  hideTip(); try { history.replaceState(null, '', '#' + id); } catch (e) {}
+  window.scrollTo(0, 0);
+}
+TABS.forEach(([id, label]) => { const b = document.createElement('button'); b.id = 'tab-btn-' + id; b.setAttribute('role', 'tab'); b.textContent = label; b.onclick = () => open(id); bar.appendChild(b); });
+let start = 'overview'; try { const h = location.hash.slice(1); if (TABS.some(t => t[0] === h)) start = h; } catch (e) {}
+open(start); window.scrollTo(0, 0);
+</script>

@@ -1,0 +1,4 @@
+.venv/
+__pycache__/
+outputs/clean_sales.csv
+Online_Retail.xlsx
